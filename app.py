@@ -88,9 +88,7 @@ try:
 except Exception as e:
     st.error(
         "Error initialising the Gemini client. "
-        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets.
-
-"
+        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets."
         f"Details: {e}"
     )
     st.stop()
@@ -103,8 +101,7 @@ st.session_state.setdefault("uploaded_files", [])
 # --- Sidebar ----------------------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
-    st.markdown("### About
-Breifly describe your bot here for users.")
+    st.markdown("### About Breifly describe your bot here for users.")
 
     # Model Selection Expander (testing different models)
     with st.expander(":material/text_fields_alt: Model Selection", expanded=True):
@@ -193,8 +190,7 @@ Breifly describe your bot here for users.")
                 left, right = st.columns([0.88, 0.12])
                 with left:
                     st.write(
-                        f"• {meta['name']}  
-"
+                        f"• {meta['name']}"
                         f"<small>{human_size(meta['size'])} · {meta['mime']}</small>",
                         unsafe_allow_html=True
                     )
