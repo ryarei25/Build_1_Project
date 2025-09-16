@@ -354,31 +354,27 @@ import os
 import json
 import streamlit as st
 
-# --- Load 16personalities JSON safely ---
-JSON_FILENAME = "16personalities.json"
-JSON_PATH = os.path.join("data", JSON_FILENAME)
+# --- Determine base directory ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# --- Path to JSON file ---
+json_path = os.path.join(BASE_DIR, "data", "16personalities.json")
+
+# --- Load JSON safely ---
 personalities = []
 
-if not os.path.exists(JSON_PATH):
-    st.error(f"❌ JSON file not found at path: {JSON_PATH}")
-    st.stop()
-else:
-    try:
-        # Use utf-8-sig to handle BOM if present
-        with open(JSON_PATH, "r", encoding="utf-8-sig") as f:
+try:
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8-sig") as f:
             personalities = json.load(f)
-        st.success(f"✅ Loaded {len(personalities)} personality entries from JSON!")
-    except json.JSONDecodeError as jde:
-        st.error(f"❌ JSONDecodeError: Check the file formatting.\nDetails: {jde}")
-        st.stop()
-    except Exception as e:
-        st.error(f"❌ Unexpected error loading JSON: {e}")
-        st.stop()
+        st.success(f"Loaded {len(personalities)} personality entries!")
+    else:
+        st.warning("⚠️ '16personalities.json' not found. Bot will continue without personality data.")
+except json.JSONDecodeError as jde:
+    st.error(f"JSONDecodeError: {jde}. Bot will continue without personality data.")
+except Exception as e:
+    st.error(f"Unexpected error loading JSON: {e}. Bot will continue without personality data.")
 
-# Optional: preview first entry for debugging
-if personalities:
-    st.write("Preview of first entry:", personalities[0])
 
 
 
