@@ -265,29 +265,52 @@ def _ensure_files_active(files, max_wait_s: float = 12.0):
                     pass
         if any_processing:
             time.sleep(0.6)
+
+
           
-# --- ASU Event Fetch & Filter Block -------------------
+# --- ASU Event Fetch & Filter Block (no extra libraries) -------------------
 import requests
-import ics
 from datetime import datetime
 
-# URL for ASU events ICS feed
 ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
+
+def parse_ics(ics_text):
+    events = []
+    current_event = {}
+    for line in ics_text.splitlines():
+        if line.startswith("BEGIN:VEVENT"):
+            current_event = {}
+        elif line.startswith("END:VEVENT"):
+            if "SUMMARY" in current_event and "DTSTART" in current_event:
+                events.append({
+                    "title": current_event.get("SUMMARY", "No title"),
+                    "start": current_event.get("DTSTART"),
+                    "end": current_event.get("DTEND"),
+                    "location": current_event.get("LOCATION", "No location specified")
+                })
+        elif line.startswith("SUMMARY:"):
+            current_event["SUMMARY"] = line[len("SUMMARY:"):].strip()
+        elif line.startswith("DTSTART"):
+            dt_str = line.split(":")[1].strip()
+            try:
+                current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+            except:
+                current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
+        elif line.startswith("DTEND"):
+            dt_str = line.split(":")[1].strip()
+            try:
+                current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+            except:
+                current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%d")
+        elif line.startswith("LOCATION:"):
+            current_event["LOCATION"] = line[len("LOCATION:"):].strip()
+    return events
 
 def fetch_asu_events():
     try:
         r = requests.get(ICS_URL)
         r.raise_for_status()
-        calendar = ics.Calendar(r.text)
-        events = []
-        for e in calendar.events:
-            events.append({
-                "title": e.name,
-                "start": e.begin.datetime,
-                "end": e.end.datetime if e.end else None,
-                "location": e.location
-            })
-        return events
+        return parse_ics(r.text)
     except Exception as ex:
         st.error(f"Failed to fetch ASU events: {ex}")
         return []
@@ -295,6 +318,7 @@ def fetch_asu_events():
 # Store events in session state (only fetch once)
 if "asu_events" not in st.session_state:
     st.session_state.asu_events = fetch_asu_events()
+
 
 # Ask user for a simple keyword filter
 filter_keyword = st.text_input("Filter events by keyword (leave blank for all):").lower()
