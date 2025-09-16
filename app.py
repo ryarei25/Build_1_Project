@@ -357,40 +357,6 @@ if user_prompt := st.chat_input("Message your bot…"):
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
 
-
-    # Send message and display full response (no streaming)
-    with st.chat_message("assistant", avatar=":material/robot_2:"):  # <-- This bot image can be replaced with an emoji
-        try:
-            # If files are attached, ensure they're ready and include them in this turn
-            contents_to_send = None
-            if st.session_state.uploaded_files:
-                _ensure_files_active(st.session_state.uploaded_files)
-                contents_to_send = [
-                    types.Part.from_text(text=user_prompt)
-                ] + [meta["file"] for meta in st.session_state.uploaded_files]
-
-            # Show spinner with message
-            with st.spinner("🔍 Thinking about what I know about this ..."):
-                if contents_to_send is None:
-                    # No files attached: keep original behavior
-                    response = st.session_state.chat.send_message(user_prompt)
-                else:
-                    # Files attached: pass a parts list (text + File objects)
-                    response = st.session_state.chat.send_message(contents_to_send)
-
-            # Extract the full response text
-            full_response = response.text if hasattr(response, "text") else str(response)
-
-            # Display the full response
-            st.markdown(full_response)
-
-        except Exception as e:
-            full_response = f"❌ Error from Gemini: {e}"
-            st.error(full_response)
-
-        # Record assistant reply
-        st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
-
 # Footer
 st.markdown(
     "<div style='text-align:center;color:gray;font-size:12px;'>"
