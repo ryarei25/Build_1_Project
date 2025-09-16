@@ -348,6 +348,7 @@ else:
     events_summary = "No events match your filter."
 
 # --- Append to chat input automatically -------------
+# --- Append to chat input automatically -------------
 if user_prompt := st.chat_input("Message your bot…"):
     # Combine user prompt with events
     user_prompt_with_events = f"{user_prompt}\n\n{events_summary}\n\nPlease recommend the most relevant events to the user."
@@ -359,10 +360,38 @@ if user_prompt := st.chat_input("Message your bot…"):
 
     # Send to Gemini
     with st.chat_message("assistant", avatar=":material/robot_2:"):
-        response = st.session_state.chat.send_message(user_prompt_with_events)
-        full_response = response.text if hasattr(response, "text") else str(response)
-        st.markdown(full_response)
+        try:
+            # If files are attached, ensure they're ready and include them in this turn
+            contents_to_send = None
+            if st.session_state.uploaded_files:
+                _ensure_files_active(st.session_state.uploaded_files)
+                # Use the combined prompt with events here
+                contents_to_send = [
+                    types.Part.from_text(text=user_prompt_with_events)
+                ] + [meta["file"] for meta in st.session_state.uploaded_files]
+
+            # Show spinner with message
+            with st.spinner("🔍 Thinking about what I know about this ..."):
+                if contents_to_send is None:
+                    # No files attached: send combined prompt with events
+                    response = st.session_state.chat.send_message(user_prompt_with_events)
+                else:
+                    # Files attached: pass a parts list (text + File objects)
+                    response = st.session_state.chat.send_message(contents_to_send)
+
+            # Extract the full response text
+            full_response = response.text if hasattr(response, "text") else str(response)
+
+            # Display the full response
+            st.markdown(full_response)
+
+        except Exception as e:
+            full_response = f"❌ Error from Gemini: {e}"
+            st.error(full_response)
+
+        # Record assistant reply
         st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+
 
 
     # Send message and display full response (no streaming)
