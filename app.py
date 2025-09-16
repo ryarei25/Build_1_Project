@@ -347,8 +347,7 @@ if filtered_events:
 else:
     events_summary = "No events match your filter."
 
-# --- Append to chat input automatically -------------
-# --- Append to chat input automatically -------------
+# --- Chat Input / Interaction with Bot ---
 if user_prompt := st.chat_input("Message your bot…"):
     # Combine user prompt with events
     user_prompt_with_events = f"{user_prompt}\n\n{events_summary}\n\nPlease recommend the most relevant events to the user."
