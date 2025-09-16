@@ -390,27 +390,30 @@ if user_prompt := st.chat_input("Message your bot…"):
         st.markdown(user_prompt)
 
     # --- Step 5: Send message to Gemini ---
-    with st.chat_message("assistant", avatar=":material/robot_2:"):
-        try:
-            # Only send a single string part for the prompt
-            contents_to_send = [types.Part.from_text(user_prompt_with_events)]
-            
-            # Include uploaded files
-            if st.session_state.uploaded_files:
-                _ensure_files_active(st.session_state.uploaded_files)
-                contents_to_send += [meta["file"] for meta in st.session_state.uploaded_files]
+with st.chat_message("assistant", avatar=":material/robot_2:"):
+    try:
+        # Step 5a: Prepare text part only
+        contents_to_send = [types.Part.from_text(user_prompt_with_events)]
 
-            response = st.session_state.chat.send_message(contents_to_send)
-            full_response = response.text if hasattr(response, "text") else str(response)
+        # Step 5b: Include uploaded files separately
+        if st.session_state.uploaded_files:
+            _ensure_files_active(st.session_state.uploaded_files)
+            for meta in st.session_state.uploaded_files:
+                contents_to_send.append(meta["file"])
 
-            # Display the response
-            st.markdown(full_response)
+        # Step 5c: Send the message
+        response = st.session_state.chat.send_message(contents_to_send)
+        full_response = response.text if hasattr(response, "text") else str(response)
 
-            # Record assistant reply
-            st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+        # Step 5d: Display the response
+        st.markdown(full_response)
 
-        except Exception as e:
-            st.error(f"❌ Error from Gemini: {e}")
+        # Step 5e: Record assistant reply
+        st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+
+    except Exception as e:
+        st.error(f"❌ Error from Gemini: {e}")
+
 
 
 
