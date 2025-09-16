@@ -349,17 +349,27 @@ else:
 
 from datetime import datetime, timedelta
 
-# --- Load personality JSON ---
+# --- Load personality JSON robustly ---
+import os
 import json
+
+# Define the relative path to the JSON file
+json_path = os.path.join("data", "16personalities.json")  # <-- put your JSON inside a folder named 'data'
+
+# Load the JSON file
 try:
-    with open("16personalities.json", "r") as f:
+    with open(json_path, "r") as f:
         personalities = json.load(f)
-except Exception as e:
-    st.warning(f"Could not load personalities JSON: {e}")
+except FileNotFoundError:
+    st.warning(f"Could not find '{json_path}'. Make sure the file exists in the 'data' folder.")
+    personalities = {}
+except json.JSONDecodeError:
+    st.warning(f"Error decoding JSON file at '{json_path}'. Check that the file is valid JSON.")
     personalities = {}
 
 # Ensure we track user personality
 st.session_state.setdefault("user_personality", None)
+
 
 # --- Helper: Determine personality context ---
 def get_personality_text():
