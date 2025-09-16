@@ -357,10 +357,25 @@ if user_prompt := st.chat_input("Message your bot…"):
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
 
-# Footer
-st.markdown(
-    "<div style='text-align:center;color:gray;font-size:12px;'>"
-    "I can make mistakes—please verify important information."
-    "</div>",
-    unsafe_allow_html=True,
-)
+    # Send message to Gemini once and display response
+    with st.chat_message("assistant", avatar=":material/robot_2:"):
+        try:
+            # Prepare parts: user prompt + any uploaded files
+            contents_to_send = [types.Part.from_text(user_prompt_with_events)]
+            if st.session_state.uploaded_files:
+                _ensure_files_active(st.session_state.uploaded_files)
+                contents_to_send += [meta["file"] for meta in st.session_state.uploaded_files]
+
+            # Send to Gemini
+            response = st.session_state.chat.send_message(contents_to_send)
+            full_response = response.text if hasattr(response, "text") else str(response)
+
+            # Display the response
+            st.markdown(full_response)
+
+            # Record assistant reply
+            st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+
+        except Exception as e:
+            st.error(f"❌ Error from Gemini: {e}")
+
