@@ -350,24 +350,31 @@ else:
 
 from datetime import datetime, timedelta
 
-# json
+# --- Load 16personalities JSON safely ---
 import os
-import streamlit as st
 import json
+import streamlit as st
 
-# Absolute path from current working directory
-json_path = os.path.join(os.getcwd(), "data", "16personalities.json")
+# Determine path relative to this file (app.py)
+json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
 
-st.write("Current working directory:", os.getcwd())
+# Debug info
 st.write("JSON path:", json_path)
 st.write("Exists?", os.path.exists(json_path))
 
-try:
-    with open(json_path, "r") as f:
-        personalities = json.load(f)
-    st.success(f"JSON loaded! {len(personalities)} entries found.")
-except Exception as e:
-    st.error(f"Failed to load JSON: {e}")
+personalities = []
+if os.path.exists(json_path):
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            personalities = json.load(f)
+        st.success(f"JSON loaded! {len(personalities)} entries found.")
+    except json.JSONDecodeError as jde:
+        st.error(f"JSONDecodeError: Check that the file is valid JSON.\nDetails: {jde}")
+    except Exception as e:
+        st.error(f"Failed to load JSON: {e}")
+else:
+    st.error(f"JSON file not found at path: {json_path}. Make sure 'data/16personalities.json' exists.")
+
 
 
 
