@@ -107,8 +107,7 @@ st.session_state.setdefault("quiz_progress", 0)         # index of current quiz 
 # ----------------------------- Sidebar ---------------------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
-    st.markdown("### About
-Briefly describe your bot here for users.")
+    st.markdown("### Briefly describe your bot here for users.")
 
     # Model selection
     with st.expander(":material/text_fields_alt: Model Selection", expanded=True):
