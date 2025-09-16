@@ -27,6 +27,22 @@ import io
 import time
 import mimetypes
 
+import os
+import streamlit as st
+
+json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
+st.write("App directory (__file__):", os.path.dirname(__file__))
+st.write("JSON path:", json_path)
+st.write("Exists?", os.path.exists(json_path))
+
+try:
+    import json
+    with open(json_path, "r") as f:
+        personalities = json.load(f)
+    st.success(f"JSON loaded! {len(personalities)} entries found.")
+except Exception as e:
+    st.error(f"Failed to load JSON: {e}")
+
 # --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types   # <--Allows for tool use, like Google Search
