@@ -27,21 +27,6 @@ import io
 import time
 import mimetypes
 
-import os
-import streamlit as st
-
-json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
-st.write("App directory (__file__):", os.path.dirname(__file__))
-st.write("JSON path:", json_path)
-st.write("Exists?", os.path.exists(json_path))
-
-try:
-    import json
-    with open(json_path, "r") as f:
-        personalities = json.load(f)
-    st.success(f"JSON loaded! {len(personalities)} entries found.")
-except Exception as e:
-    st.error(f"Failed to load JSON: {e}")
 
 # --- Google GenAI Models import ---------------------------
 from google import genai
@@ -365,30 +350,25 @@ else:
 
 from datetime import datetime, timedelta
 
-# --- Load personality JSON robustly ---
+# json
 import os
-import json
 import streamlit as st
+import json
 
-# Build the path relative to this script
-json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
+# Absolute path from current working directory
+json_path = os.path.join(os.getcwd(), "data", "16personalities.json")
 
-# Load the JSON file
+st.write("Current working directory:", os.getcwd())
+st.write("JSON path:", json_path)
+st.write("Exists?", os.path.exists(json_path))
+
 try:
     with open(json_path, "r") as f:
         personalities = json.load(f)
-except FileNotFoundError:
-    st.warning(f"Could not find '{json_path}'. Make sure the file exists in the 'data' folder.")
-    personalities = {}
-except json.JSONDecodeError:
-    st.warning(f"Error decoding JSON file at '{json_path}'. Check that the file is valid JSON.")
-    personalities = {}
+    st.success(f"JSON loaded! {len(personalities)} entries found.")
+except Exception as e:
+    st.error(f"Failed to load JSON: {e}")
 
-# For debugging: show if JSON loaded successfully
-st.write("✅ Personality JSON loaded:", bool(personalities))
-
-# Ensure we track user personality
-st.session_state.setdefault("user_personality", None)
 
 
 
