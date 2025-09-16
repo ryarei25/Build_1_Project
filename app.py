@@ -266,11 +266,80 @@ def _ensure_files_active(files, max_wait_s: float = 12.0):
         if any_processing:
             time.sleep(0.6)
           
-if user_prompt := st.chat_input("Message 'your bot name'…"):
-    # Record & show user message
+# --- ASU Event Fetch & Filter Block -------------------
+import requests
+import ics
+from datetime import datetime
+
+# URL for ASU events ICS feed
+ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
+
+def fetch_asu_events():
+    try:
+        r = requests.get(ICS_URL)
+        r.raise_for_status()
+        calendar = ics.Calendar(r.text)
+        events = []
+        for e in calendar.events:
+            events.append({
+                "title": e.name,
+                "start": e.begin.datetime,
+                "end": e.end.datetime if e.end else None,
+                "location": e.location
+            })
+        return events
+    except Exception as ex:
+        st.error(f"Failed to fetch ASU events: {ex}")
+        return []
+
+# Store events in session state (only fetch once)
+if "asu_events" not in st.session_state:
+    st.session_state.asu_events = fetch_asu_events()
+
+# Ask user for a simple keyword filter
+filter_keyword = st.text_input("Filter events by keyword (leave blank for all):").lower()
+
+# Filter events based on keyword
+if filter_keyword:
+    filtered_events = [
+        e for e in st.session_state.asu_events
+        if filter_keyword in e["title"].lower()
+    ]
+else:
+    filtered_events = st.session_state.asu_events
+
+# Store filtered events for AI context
+st.session_state.filtered_events_for_ai = filtered_events
+
+# Prepare event summary for bot
+if filtered_events:
+    event_texts = []
+    for e in filtered_events[:10]:  # limit to top 10
+        start_str = e["start"].strftime('%a, %b %d %I:%M %p')
+        end_str = e["end"].strftime('%I:%M %p') if e["end"] else "N/A"
+        location = e["location"] or "No location specified"
+        event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
+    events_summary = "Upcoming ASU events matching your preferences:\n" + "\n".join(event_texts)
+else:
+    events_summary = "No events match your filter."
+
+# --- Append to chat input automatically -------------
+if user_prompt := st.chat_input("Message your bot…"):
+    # Combine user prompt with events
+    user_prompt_with_events = f"{user_prompt}\n\n{events_summary}\n\nPlease recommend the most relevant events to the user."
+
+    # Record user message
     st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
-    with st.chat_message("user", avatar="👤"):  # <-- This emoji can be changed
+    with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
+
+    # Send to Gemini
+    with st.chat_message("assistant", avatar=":material/robot_2:"):
+        response = st.session_state.chat.send_message(user_prompt_with_events)
+        full_response = response.text if hasattr(response, "text") else str(response)
+        st.markdown(full_response)
+        st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+
 
     # Send message and display full response (no streaming)
     with st.chat_message("assistant", avatar=":material/robot_2:"):  # <-- This bot image can be replaced with an emoji
