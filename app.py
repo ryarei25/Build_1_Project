@@ -359,8 +359,7 @@ if user_prompt := st.chat_input("Message your bot…"):
         personality_text = "\nUser uploaded a personality PDF. Use this to infer user's type."
 
     # --- Step 2: Filter events ---
-    # Optional keyword filter
-    filter_keyword = user_prompt.lower()  # simple approach: user prompt may include keywords
+    filter_keyword = user_prompt.lower()  # use user's prompt as keyword
     now = datetime.now()
     one_week_from_now = now + timedelta(days=7)
 
@@ -393,8 +392,10 @@ if user_prompt := st.chat_input("Message your bot…"):
     # --- Step 5: Send message to Gemini ---
     with st.chat_message("assistant", avatar=":material/robot_2:"):
         try:
-            # Prepare parts: user prompt + uploaded files
+            # Only send a single string part for the prompt
             contents_to_send = [types.Part.from_text(user_prompt_with_events)]
+            
+            # Include uploaded files
             if st.session_state.uploaded_files:
                 _ensure_files_active(st.session_state.uploaded_files)
                 contents_to_send += [meta["file"] for meta in st.session_state.uploaded_files]
@@ -410,5 +411,6 @@ if user_prompt := st.chat_input("Message your bot…"):
 
         except Exception as e:
             st.error(f"❌ Error from Gemini: {e}")
+
 
 
