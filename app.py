@@ -355,32 +355,31 @@ import json
 import streamlit as st
 
 # --- Load 16personalities JSON safely ---
-json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
-
-# Debug info
-st.write("JSON path:", json_path)
-st.write("Exists?", os.path.exists(json_path))
-if os.path.exists(json_path):
-    st.write("File size:", os.path.getsize(json_path), "bytes")
-else:
-    st.error("JSON file not found at the expected path.")
-    personalities = []
-    st.stop()
+JSON_FILENAME = "16personalities.json"
+JSON_PATH = os.path.join("data", JSON_FILENAME)
 
 personalities = []
-try:
-    # Use utf-8-sig to remove BOM if present
-    with open(json_path, "r", encoding="utf-8-sig") as f:
-        # Preview first 100 chars for debugging
-        preview = f.read(100)
-        st.write("Preview of JSON start:", preview)
-        f.seek(0)  # Go back to start of file
-        personalities = json.load(f)
-    st.success(f"JSON loaded! {len(personalities)} entries found.")
-except json.JSONDecodeError as jde:
-    st.error(f"JSONDecodeError: Check that the file is valid JSON.\nDetails: {jde}")
-except Exception as e:
-    st.error(f"Failed to load JSON: {e}")
+
+if not os.path.exists(JSON_PATH):
+    st.error(f"❌ JSON file not found at path: {JSON_PATH}")
+    st.stop()
+else:
+    try:
+        # Use utf-8-sig to handle BOM if present
+        with open(JSON_PATH, "r", encoding="utf-8-sig") as f:
+            personalities = json.load(f)
+        st.success(f"✅ Loaded {len(personalities)} personality entries from JSON!")
+    except json.JSONDecodeError as jde:
+        st.error(f"❌ JSONDecodeError: Check the file formatting.\nDetails: {jde}")
+        st.stop()
+    except Exception as e:
+        st.error(f"❌ Unexpected error loading JSON: {e}")
+        st.stop()
+
+# Optional: preview first entry for debugging
+if personalities:
+    st.write("Preview of first entry:", personalities[0])
+
 
 
 
