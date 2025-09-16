@@ -352,9 +352,10 @@ from datetime import datetime, timedelta
 # --- Load personality JSON robustly ---
 import os
 import json
+import streamlit as st
 
-# Define the relative path to the JSON file
-json_path = os.path.join("data", "16personalities.json")  # <-- put your JSON inside a folder named 'data'
+# Build the path relative to this script
+json_path = os.path.join(os.path.dirname(__file__), "data", "16personalities.json")
 
 # Load the JSON file
 try:
@@ -367,8 +368,12 @@ except json.JSONDecodeError:
     st.warning(f"Error decoding JSON file at '{json_path}'. Check that the file is valid JSON.")
     personalities = {}
 
+# For debugging: show if JSON loaded successfully
+st.write("✅ Personality JSON loaded:", bool(personalities))
+
 # Ensure we track user personality
 st.session_state.setdefault("user_personality", None)
+
 
 
 # --- Helper: Determine personality context ---
