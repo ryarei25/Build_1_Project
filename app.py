@@ -373,7 +373,8 @@ try:
 except json.JSONDecodeError as jde:
     st.error(f"JSONDecodeError: {jde}. Bot will continue without personality data.")
 except Exception as e:
-    st.error
+    st.error(f"Unexpected error loading JSON: {e}. Bot will continue without personality data.")
+
 
 
 
