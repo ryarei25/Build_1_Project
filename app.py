@@ -357,7 +357,7 @@ import streamlit as st
 # --- Determine base directory ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# --- Path to JSON file ---
+# --- Path to JSON file at the same level as app.py ---
 json_path = os.path.join(BASE_DIR, "16personalities.json")
 
 # --- Load JSON safely ---
@@ -367,13 +367,13 @@ try:
     if os.path.exists(json_path):
         with open(json_path, "r", encoding="utf-8-sig") as f:
             personalities = json.load(f)
-        st.success(f"✅ Loaded {len(personalities)} personality entries!")
+        st.success(f"Loaded {len(personalities)} personality entries!")
     else:
         st.warning("⚠️ '16personalities.json' not found. Bot will continue without personality data.")
 except json.JSONDecodeError as jde:
-    st.error(f"❌ JSONDecodeError: {jde}. Bot will continue without personality data.")
+    st.error(f"JSONDecodeError: {jde}. Bot will continue without personality data.")
 except Exception as e:
-    st.error(f"❌ Unexpected error loading JSON: {e}. Bot will continue without personality data.")
+    st.error
 
 
 
