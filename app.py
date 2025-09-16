@@ -352,27 +352,20 @@ from datetime import datetime, timedelta
 # --- Chat Input / Interaction with Bot ---
 if user_prompt := st.chat_input("Message your bot…"):
 
-    # --- Step 1: Determine user's personality type if PDF uploaded ---
-    personality_text = ""
-    if st.session_state.uploaded_files:
-        # For simplicity, just send the PDF file to Gemini as context
-        personality_text = "\nUser uploaded a personality PDF. Use this to infer user's type."
+   
 
-    # --- Step 2: Filter events ---
-    filter_keyword = user_prompt.lower()  # use user's prompt as keyword
+    # Step 2: Filter events
+    filter_keyword = user_prompt.lower()
     now = datetime.now()
     one_week_from_now = now + timedelta(days=7)
-
     filtered_events = [
         e for e in st.session_state.asu_events
         if (filter_keyword in e["title"].lower() or filter_keyword in e.get("location","").lower())
         and now <= e["start"] <= one_week_from_now
     ]
-
-    # Prepare event summary
     if filtered_events:
         event_texts = []
-        for e in filtered_events[:10]:  # top 10
+        for e in filtered_events[:10]:
             start_str = e["start"].strftime('%a, %b %d %I:%M %p')
             end_str = e["end"].strftime('%I:%M %p') if e.get("end") else "N/A"
             location = e.get("location", "No location specified")
@@ -381,39 +374,28 @@ if user_prompt := st.chat_input("Message your bot…"):
     else:
         events_summary = "No events match your criteria for the next week."
 
-    # --- Step 3: Combine user input, personality context, and events ---
+    # Step 3: Combine user input + personality + events
     user_prompt_with_events = f"{user_prompt}\n\n{personality_text}\n\n{events_summary}\n\nPlease recommend the most relevant events to the user, optionally aligning with their personality type."
 
-    # --- Step 4: Record user message ---
+    # Step 4: Record user message
     st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
 
-    # --- Step 5: Send message to Gemini ---
-with st.chat_message("assistant", avatar=":material/robot_2:"):
-    try:
-        # Step 5a: Prepare text part only
-        contents_to_send = [types.Part.from_text(user_prompt_with_events)]
+    # Step 5: Send to Gemini
+    with st.chat_message("assistant", avatar=":material/robot_2:"):
+        try:
+            contents_to_send = [types.Part.from_text(user_prompt_with_events)]
+            if st.session_state.uploaded_files:
+                _ensure_files_active(st.session_state.uploaded_files)
+                for meta in st.session_state.uploaded_files:
+                    contents_to_send.append(meta["file"])
 
-        # Step 5b: Include uploaded files separately
-        if st.session_state.uploaded_files:
-            _ensure_files_active(st.session_state.uploaded_files)
-            for meta in st.session_state.uploaded_files:
-                contents_to_send.append(meta["file"])
+            response = st.session_state.chat.send_message(contents_to_send)
+            full_response = response.text if hasattr(response, "text") else str(response)
 
-        # Step 5c: Send the message
-        response = st.session_state.chat.send_message(contents_to_send)
-        full_response = response.text if hasattr(response, "text") else str(response)
+            st.markdown(full_response)
+            st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
 
-        # Step 5d: Display the response
-        st.markdown(full_response)
-
-        # Step 5e: Record assistant reply
-        st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
-
-    except Exception as e:
-        st.error(f"❌ Error from Gemini: {e}")
-
-
-
-
+        except Exception as e:
+            st.error(f"❌ Error from Gemini: {e}")
