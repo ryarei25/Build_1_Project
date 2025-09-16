@@ -349,40 +349,73 @@ else:
 
 from datetime import datetime, timedelta
 
+# --- Load personality JSON ---
+import json
+try:
+    with open("16personalities.json", "r") as f:
+        personalities = json.load(f)
+except Exception as e:
+    st.warning(f"Could not load personalities JSON: {e}")
+    personalities = {}
+
+# Ensure we track user personality
+st.session_state.setdefault("user_personality", None)
+
+# --- Helper: Determine personality context ---
+def get_personality_text():
+    if st.session_state.user_personality:
+        return f"User personality: {st.session_state.user_personality}"
+    elif st.session_state.uploaded_files:
+        return "User uploaded a personality PDF; infer personality type from it."
+    else:
+        return "User personality unknown; offer a short quiz if appropriate."
+
 # --- Chat Input / Interaction with Bot ---
 if user_prompt := st.chat_input("Message your bot…"):
 
-   
+    st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_prompt)
 
-    # Step 2: Filter events
+    personality_text = get_personality_text()
+
+    # Filter events based on user input + next week
     filter_keyword = user_prompt.lower()
     now = datetime.now()
-    one_week_from_now = now + timedelta(days=7)
+    one_week = now + timedelta(days=7)
     filtered_events = [
         e for e in st.session_state.asu_events
         if (filter_keyword in e["title"].lower() or filter_keyword in e.get("location","").lower())
-        and now <= e["start"] <= one_week_from_now
+        and now <= e["start"] <= one_week
     ]
     if filtered_events:
         event_texts = []
         for e in filtered_events[:10]:
             start_str = e["start"].strftime('%a, %b %d %I:%M %p')
-            end_str = e["end"].strftime('%I:%M %p') if e.get("end") else "N/A"
+            end_str = e.get("end").strftime('%I:%M %p') if e.get("end") else "N/A"
             location = e.get("location", "No location specified")
             event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
         events_summary = "Here are upcoming events based on your preferences and next week timing:\n" + "\n".join(event_texts)
     else:
         events_summary = "No events match your criteria for the next week."
 
-    # Step 3: Combine user input + personality + events
-    user_prompt_with_events = f"{user_prompt}\n\n{personality_text}\n\n{events_summary}\n\nPlease recommend the most relevant events to the user, optionally aligning with their personality type."
+    # Prepare full prompt for Gemini
+    user_prompt_with_events = f"""
+User message: {user_prompt}
 
-    # Step 4: Record user message
-    st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_prompt)
+Personality context: {personality_text}
 
-    # Step 5: Send to Gemini
+Personality database: {json.dumps(personalities)}
+
+Upcoming events (next week): {events_summary}
+
+Instructions:
+1. Recommend events that best match the user's preferences and personality.
+2. If the user's personality is unknown, offer a short, engaging quiz before suggesting events.
+3. Be friendly and concise.
+"""
+
+    # --- Send to Gemini ---
     with st.chat_message("assistant", avatar=":material/robot_2:"):
         try:
             contents_to_send = [types.Part.from_text(user_prompt_with_events)]
@@ -399,3 +432,4 @@ if user_prompt := st.chat_input("Message your bot…"):
 
         except Exception as e:
             st.error(f"❌ Error from Gemini: {e}")
+
