@@ -23,6 +23,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# --- Header Image ---
+header_img = Image.open("Bot.png")
+st.image(header_img, use_container_width=True, output_format="PNG")
 
 # ----------------------------- CSS & Theme ------------------------
 st.markdown("""
