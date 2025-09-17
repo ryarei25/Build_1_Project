@@ -28,6 +28,7 @@ header_img = Image.open("Bot.png")
 st.image(header_img, use_container_width=True, output_format="PNG")
 
 # ----------------------------- CSS & Theme ------------------------
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
 
@@ -100,22 +101,22 @@ header {
     max-width: 70%;
     padding: 12px 16px;
     margin: 8px 0;
-    border-radius: 6px;
+    border-radius: 4px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    border: 2px solid rgba(217, 254, 201, 0.6); /* soft green border */
-    box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    border: 2px solid rgba(216,197,221,0.7);
+    box-shadow: 2px 2px 0 #D8C5DD;
 }
 
 .user-bubble {
-    background-color: rgba(217, 254, 201, 0.7);  /* semi-transparent green */
-    color: #111;  /* readable text */
+    background-color: rgba(217,254,201,0.6); /* semi-transparent light green */
+    border-color: rgba(217,254,201,0.8);
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: rgba(217, 254, 201, 0.6);  /* semi-transparent green */
-    color: #111;
+    background-color: rgba(217,254,201,0.6); /* same semi-transparent light green */
+    border-color: rgba(217,254,201,0.8);
     align-self: flex-start;
 }
 
@@ -125,37 +126,22 @@ header {
     flex-direction: column;
 }
 
-/* --- Inputs & text areas --- */
+/* --- Inputs & selectbox --- */
 .stTextInput>div>div>input,
-.stTextArea>div>div>textarea {
-    background-color: #D9FEC9 !important;  /* light green */
-    border: 2px solid #D8C5DD;
+.stTextArea>div>div>textarea,
+.stSelectbox>div>div>div[role="listbox"],
+select, option {
+    background-color: rgba(217,254,201,0.6) !important;  /* light green vibe dropdown */
+    border: 2px solid rgba(216,197,221,0.7);
     border-radius: 6px;
     color: #333;
     font-family: 'Comfortaa', cursive;
     padding: 6px;
 }
 
-/* --- Vibe dropdown --- */
-.stSelectbox > div > div > div[role="listbox"],
-.stSelectbox > div > div > div[role="selectbox"],
-select, option {
-    background-color: rgba(217, 254, 201, 0.7) !important;  /* semi-transparent green */
-    border: 2px solid rgba(216, 197, 221, 0.8);
-    border-radius: 6px;
-    color: #111;
-    font-family: 'Comfortaa', cursive;
-    padding: 6px;
-}
-
-/* --- Vibe label ("Choose your mood") --- */
-.stSelectbox > label {
-    color: #FFF !important;  /* white text */
-}
-
-/* --- Model selectbox label ("Choose a model") --- */
-.stSelectbox > label[data-testid="stMarkdownContainer"] {
-    color: #000 !important; /* black */
+/* --- Selectboxes & dropdown labels --- */
+.stSelectbox>label {
+    color: #FFF !important;  /* make "Choose a model" label white */
 }
 
 /* --- Buttons --- */
@@ -173,6 +159,8 @@ select, option {
     transform: scale(1.05);
 }
 </style>
+""", unsafe_allow_html=True)
+
 
 
 # --- Title 
