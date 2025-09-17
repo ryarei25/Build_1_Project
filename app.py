@@ -19,7 +19,7 @@ from google.genai import types
 # ----------------------------- Page config ------------------------
 st.set_page_config(
     page_title="BearFruit",
-    page_icon="⋆｡ﾟ☁︎｡⋆｡ ﾟ☾ ﾟ｡⋆",
+    page_icon="🐻",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -122,8 +122,8 @@ select, option {
 
 # --- Title ---
 st.markdown("""
-<h1 class="cute-title">🍓 BearFruit</h1>
-<p class="subtitle">Your cutesy Y2K pixel assistant ✨</p>
+<h1 class="title"> ⋆｡ﾟ☁︎｡⋆｡ ﾟ☾ ﾟ｡⋆ BearFruit</h1>
+<p class="subtitle">Your Personalized ASU Event Finder </p>
 """, unsafe_allow_html=True)
 
 # ----------------------------- Helpers -----------------------------
