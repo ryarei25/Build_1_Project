@@ -23,14 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ----------------------------- Header Image ------------------------
-try:
-    header_img = Image.open("Bot.png")  # replace with your file path
-    st.image(header_img, use_container_width=True)
-except FileNotFoundError:
-    st.warning("Header image not found. Place 'header_image.png' in the app folder.")
-
-#---- CSS
+# ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
@@ -38,28 +31,21 @@ st.markdown("""
 /* --- Background & general body --- */
 body {
     font-family: 'Comfortaa', cursive;
-    background-color: #2E2E2E;  /* dark grey background */
-    color: #FFF;
+    background-color: #2e2e2e;  /* dark grey background */
+    color: #333;
     overflow-x: hidden;
 }
 
 /* --- Sidebar --- */
 [data-testid="stSidebar"] {
-    background-color: #E5DBFF !important; /* lavender */
+    background-color: #E5DBFF !important;  /* lavender */
     color: #333;
     border-right: 2px solid #D8C5DD;
 }
 
-/* Sidebar titles & selectboxes */
-[data-testid="stSidebar"] h2, 
-[data-testid="stSidebar"] h3, 
-[data-testid="stSidebar"] .stSelectbox label {
-    color: #000;  /* black text */
-}
-
 /* --- Top bar (menu) --- */
 header {
-    background-color: #FFCDEB !important;
+    background-color: #FFCDEB !important;  /* pink */
 }
 
 /* --- Pixelated Bearfruit Title --- */
@@ -70,13 +56,13 @@ header {
 }
 .pixel-title {
     font-family: 'Press Start 2P', cursive;
-    font-size: 80px;  
-    color: #FFF;       /* inside color */
+    font-size: 80px;
+    color: #FFF;  /* inside color */
     text-shadow:
         -2px -2px 0 #000,
         2px -2px 0 #000,
         -2px 2px 0 #000,
-        2px 2px 0 #000,  /* black outline */
+        2px 2px 0 #000,
         4px 4px #EBC7FB,
         6px 6px #FFE4A4,
         8px 8px #D9FEC9;
@@ -87,23 +73,21 @@ header {
 /* --- Pixel stars --- */
 .star {
     position: absolute;
-    width: 3px;
-    height: 3px;
+    width: 2px;
+    height: 2px;
     background-color: #FFE4A4;
-    border-radius: 50%;
-    animation: twinkle 1.5s infinite alternate;
+    animation: twinkle 2s infinite;
 }
 @keyframes twinkle {
-    0% {opacity:0.3; transform: scale(1);}
-    50% {opacity:1; transform: scale(1.5);}
-    100% {opacity:0.3; transform: scale(1);}
+    0%,100% {opacity:0.2;}
+    50% {opacity:1;}
 }
 
 /* --- Subtitle --- */
 .subtitle {
     text-align:center;
     font-family:'Comfortaa', cursive;
-    font-size:20px;
+    font-size:18px;
     margin-bottom: 20px;
     color: #FFF;
 }
@@ -141,19 +125,14 @@ header {
 /* --- Inputs & selectbox --- */
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
-.stSelectbox>div>div>div[role="listbox"] {
-    background-color: #D9FEC9 !important;  /* light green */
+.stSelectbox>div>div>div[role="listbox"],
+select, option {
+    background-color: #D9FEC9 !important;  /* light green vibe dropdown */
     border: 2px solid #D8C5DD;
     border-radius: 6px;
-    color: #333 !important;
+    color: #333;
     font-family: 'Comfortaa', cursive;
     padding: 6px;
-}
-
-/* Placeholder color for inputs */
-.stTextInput>div>div>input::placeholder,
-.stTextArea>div>div>textarea::placeholder {
-    color: #666;
 }
 
 /* --- Buttons --- */
@@ -173,7 +152,23 @@ header {
 </style>
 """, unsafe_allow_html=True)
 
-
+# ----------------------------- Star field HTML ------------------------
+st.markdown("""
+<div class="pixel-title-container">
+    <h1 class="pixel-title">Bearfruit</h1>
+</div>
+<script>
+const container = document.querySelector('.pixel-title-container');
+for(let i=0;i<60;i++){
+    const star = document.createElement('div');
+    star.classList.add('star');
+    star.style.top = Math.random()*60 + 'px';
+    star.style.left = Math.random()*container.offsetWidth + 'px';
+    container.appendChild(star);
+}
+</script>
+<p class="subtitle">Your ASU Event Finder Assistant</p>
+""", unsafe_allow_html=True)
 
 # ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
