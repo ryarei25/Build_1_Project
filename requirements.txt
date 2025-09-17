@@ -2,4 +2,4 @@
 google-genai>=1.26.0      # new GenAI SDK with Search grounding  
 streamlit>=1.49.0         # current Streamlit release  
 pillow>=11.3.0            # image display (PIL)  
-dateparser                 # natural language date parsing
+dateparser
