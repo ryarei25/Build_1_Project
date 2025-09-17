@@ -204,8 +204,11 @@ def filter_events(events, time_frame):
     filtered = []
     for e in events:
         event_start = e["start"]
+        # Normalize all event times
         if not isinstance(event_start, datetime):
             event_start = datetime.combine(event_start, datetime.min.time())
+        if event_start.tzinfo:
+            event_start = event_start.astimezone(None).replace(tzinfo=None)
         if start_dt <= event_start <= end_dt:
             filtered.append(e)
     return filtered[:10]
@@ -213,13 +216,10 @@ def filter_events(events, time_frame):
 # ----------------------------- Bot Reply -----------------------------
 def generate_bot_reply(user_prompt):
     f = st.session_state.filters
-    filtered_events = filter_events(
-        st.session_state.asu_events,
-        f["time_frame"]
-    )
-
+    filtered_events = filter_events(st.session_state.asu_events, f["time_frame"])
     if filtered_events:
-        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" for e in filtered_events])
+        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+                                   for e in filtered_events])
     else:
         events_summary = "No matching events found based on your preferences."
 
@@ -228,36 +228,16 @@ def generate_bot_reply(user_prompt):
 # ----------------------------- Chat -----------------------------
 with st.container():
     for msg in st.session_state.chat_history:
-        avatar="🍓" if msg["role"]=="user" else "🐻"
+        avatar = "🍓" if msg["role"]=="user" else "🐻"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["parts"])
 
 if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
-    st.session_state.last_user_prompt = user_prompt
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    current_key = (
-        st.session_state.last_user_prompt
-        + "|"
-        + st.session_state.filters["time_frame"]
-        + "|"
-        + st.session_state.filters["vibe"]
-        + "|"
-        + st.session_state.filters["personality_type"]
-        + "|"
-        + st.session_state.filters["keywords"]
-    )
-
-    if st.session_state.last_key != current_key:
-        try:
-            bot_reply = generate_bot_reply(st.session_state.last_user_prompt)
-        except Exception as e:
-            bot_reply = f"⚠️ Error generating events: {e}"
-
-        st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
-        st.session_state.last_key = current_key
-
-        with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+    bot_reply = generate_bot_reply(user_prompt)
+    st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
+    with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
 
 
