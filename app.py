@@ -35,7 +35,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
 
-/* --- Background & general body --- */
+/* --- Body background & general --- */
 body {
     font-family: 'Comfortaa', cursive;
     background-color: #CCE7FF;
@@ -49,6 +49,7 @@ body {
     color: #333;
     border-right: 2px solid #D8C5DD;
 }
+
 /* Sidebar input & select boxes */
 [data-testid="stSidebar"] .stSelectbox>div>div>div[role="listbox"],
 [data-testid="stSidebar"] .stTextInput>div>div>input,
@@ -59,7 +60,7 @@ body {
     border-radius: 6px;
 }
 
-/* --- Top bar (menu) --- */
+/* --- Top bar --- */
 header {
     background-color: #FFCDEB !important;
 }
@@ -72,8 +73,8 @@ header {
 }
 .pixel-title {
     font-family: 'Press Start 2P', cursive;
-    font-size: 72px;
-    color: #000; /* black inside */
+    font-size: 80px;
+    color: #000; /* black inside for readability */
     text-shadow:
         2px 2px #EBC7FB,
         4px 4px #FFE4A4,
@@ -115,13 +116,11 @@ header {
     border: 2px solid;
     box-shadow: 2px 2px 0 #D8C5DD;
 }
-
 .user-bubble {
     background-color: #CCE7FF;
     border-color: #D9FEC9;
     align-self: flex-end;
 }
-
 .bot-bubble {
     background-color: #FFCDEB;
     border-color: #EBC7FB;
@@ -163,23 +162,24 @@ header {
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Star field HTML ------------------------
+# ----------------------------- Pixel title & star field ------------------------
 st.markdown("""
 <div class="pixel-title-container">
     <h1 class="pixel-title">Bearfruit</h1>
 </div>
 <script>
 const container = document.querySelector('.pixel-title-container');
-for(let i=0;i<60;i++){
+for(let i=0;i<80;i++){
     const star = document.createElement('div');
     star.classList.add('star');
-    star.style.top = Math.random()*60 + 'px';
+    star.style.top = Math.random()*80 + 'px';
     star.style.left = Math.random()*container.offsetWidth + 'px';
     container.appendChild(star);
 }
 </script>
 <p class="subtitle">Your ASU Event Finder Assistant</p>
 """, unsafe_allow_html=True)
+
 
 # ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
