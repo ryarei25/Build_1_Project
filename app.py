@@ -19,7 +19,7 @@ from google.genai import types
 # ----------------------------- Page config ------------------------
 st.set_page_config(
     page_title="BearFruit",
-    #page_icon="🍓",
+    page_icon="⋆｡ﾟ☁︎｡⋆｡ ﾟ☾ ﾟ｡⋆",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -28,7 +28,7 @@ st.set_page_config(
 header_img = Image.open("Bot.png")
 st.image(header_img, use_container_width=True, output_format="PNG")
 
-# ----------------------------- CSS & Theme (updated) ------------------------
+# ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
@@ -72,36 +72,35 @@ h1.cute-title {
     border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    border: 2px solid rgba(217,254,201,0.5);
+    border: 2px solid;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
 }
-.user-bubble, .bot-bubble {
-    background-color: rgba(217,254,201,0.35); /* semi-transparent green */
-    border-color: rgba(217,254,201,0.5);
+.user-bubble {
+    background-color: #FFFAF0;
+    border-color: #FFB6C1;
+    align-self: flex-end;
 }
-
-/* --- Chat container --- */
+.bot-bubble {
+    background-color: #E0F7FA;
+    border-color: #A0E7E5;
+    align-self: flex-start;
+}
 .chat-container {
     display: flex;
     flex-direction: column;
 }
 
-/* --- Inputs & dropdowns --- */
+/* --- Inputs --- */
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stSelectbox>div>div>div[role="listbox"],
 select, option {
-    background-color: rgba(217,254,201,0.35) !important;  /* same transparent green */
-    border: 2px solid rgba(216,197,221,0.5);
+    background-color: #fff0f5 !important;  
+    border: 2px solid #FFB6C1;
     border-radius: 12px;
     color: #333;
     font-family: 'Comfortaa', cursive;
     padding: 8px;
-}
-
-/* --- "Choose a model" label --- */
-.stSelectbox>label {
-    color: #FFF !important;
 }
 
 /* --- Buttons --- */
@@ -121,11 +120,10 @@ select, option {
 </style>
 """, unsafe_allow_html=True)
 
-
 # --- Title ---
 st.markdown("""
-<h1 class="cute-title"> BearFruit</h1>
-<p class="subtitle"> ✧.* Your ASU Event Finder *.✧ </p>
+<h1 class="cute-title">🍓 BearFruit</h1>
+<p class="subtitle">Your cutesy Y2K pixel assistant ✨</p>
 """, unsafe_allow_html=True)
 
 # ----------------------------- Helpers -----------------------------
@@ -212,7 +210,7 @@ keywords = st.text_input("Enter keywords for your interests (optional, comma-sep
 # ----------------------------- Chat replay container -------------------------
 with st.container():
     for msg in st.session_state.chat_history:
-        avatar = "👤" if msg["role"] == "user" else "🍓"
+        avatar = "🍓" if msg["role"] == "user" else "🐻"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["parts"])
 
