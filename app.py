@@ -19,7 +19,7 @@ from google.genai import types
 # ----------------------------- Page config ------------------------
 st.set_page_config(
     page_title="BearFruit",
-    page_icon="🍓",
+    #page_icon="🍓",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -28,7 +28,7 @@ st.set_page_config(
 header_img = Image.open("Bot.png")
 st.image(header_img, use_container_width=True, output_format="PNG")
 
-# ----------------------------- CSS & Theme ------------------------
+# ----------------------------- CSS & Theme (updated) ------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
@@ -72,35 +72,36 @@ h1.cute-title {
     border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    border: 2px solid;
+    border: 2px solid rgba(217,254,201,0.5);
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
 }
-.user-bubble {
-    background-color: #FFFAF0;
-    border-color: #FFB6C1;
-    align-self: flex-end;
+.user-bubble, .bot-bubble {
+    background-color: rgba(217,254,201,0.35); /* semi-transparent green */
+    border-color: rgba(217,254,201,0.5);
 }
-.bot-bubble {
-    background-color: #E0F7FA;
-    border-color: #A0E7E5;
-    align-self: flex-start;
-}
+
+/* --- Chat container --- */
 .chat-container {
     display: flex;
     flex-direction: column;
 }
 
-/* --- Inputs --- */
+/* --- Inputs & dropdowns --- */
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stSelectbox>div>div>div[role="listbox"],
 select, option {
-    background-color: #fff0f5 !important;  
-    border: 2px solid #FFB6C1;
+    background-color: rgba(217,254,201,0.35) !important;  /* same transparent green */
+    border: 2px solid rgba(216,197,221,0.5);
     border-radius: 12px;
     color: #333;
     font-family: 'Comfortaa', cursive;
     padding: 8px;
+}
+
+/* --- "Choose a model" label --- */
+.stSelectbox>label {
+    color: #FFF !important;
 }
 
 /* --- Buttons --- */
@@ -120,10 +121,11 @@ select, option {
 </style>
 """, unsafe_allow_html=True)
 
+
 # --- Title ---
 st.markdown("""
-<h1 class="cute-title">🍓 BearFruit</h1>
-<p class="subtitle">Your cutesy Y2K pixel assistant ✨</p>
+<h1 class="cute-title"> BearFruit</h1>
+<p class="subtitle"> ✧.* Your ASU Event Finder *.✧ </p>
 """, unsafe_allow_html=True)
 
 # ----------------------------- Helpers -----------------------------
