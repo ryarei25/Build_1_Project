@@ -32,53 +32,49 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 # -----------------------------------------------------------------------------
+# CSS
 
-# --- Complete CSS for app.py ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 
-/* --- Palette Colors ---
-#c6d7e6 (light blue)
-#ffb9b7 (light pink)
-#d1ddb4 (light green)
-#fff1a7 (pastel yellow)
-#d8c5dd (lavender)
-*/
-
-/* --- Body / Background / General --- */
-body {
-    font-family: 'Comfortaa', cursive;
-    background-color: #c6d7e6; /* main light blue background */
-    color: #333; /* readable dark text */
-    overflow-x: hidden;
+/* ----------------- Palette ----------------- */
+:root {
+    --light-blue: #c6d7e6;
+    --light-pink: #ffb9b7;
+    --pastel-green: #d1ddb4;
+    --pastel-yellow: #fff1a7;
+    --lavender: #d8c5dd;
+    --text-dark: #333;
 }
 
-/* --- Sidebar Styling --- */
+/* ----------------- Streamlit Containers ----------------- */
+[data-testid="stAppViewContainer"] {
+    background-color: var(--light-blue) !important;
+}
+
 [data-testid="stSidebar"] {
-    background-color: #d8c5dd !important; /* pastel lavender sidebar */
-    color: #000 !important;
+    background-color: var(--lavender) !important;
+    color: var(--text-dark);
 }
 
-/* --- Top bar / header area --- */
-header, [data-testid="stHeader"] {
-    background-color: #ffb9b7 !important; /* light pink top bar */
-    color: #000 !important;
+[data-testid="stHeader"] {
+    background-color: var(--pastel-yellow) !important;
 }
 
-/* --- Pixelated title --- */
+/* ----------------- Pixelated Title ----------------- */
 .pixel-title {
     text-align: center;
     font-size: 60px;
     font-family: 'Comfortaa', cursive;
-    color: #000; /* black fill */
+    color: #000;
     text-shadow:
-        2px 2px #fff,
-        4px 4px #ffb9b7,
-        6px 6px #000;
+        2px 2px var(--light-pink),
+        4px 4px #000,
+        6px 6px var(--pastel-green);
 }
 
-/* --- Chat bubbles --- */
+/* ----------------- Chat Bubbles ----------------- */
 .chat-bubble {
     max-width: 70%;
     padding: 12px 16px;
@@ -86,32 +82,32 @@ header, [data-testid="stHeader"] {
     border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    box-shadow: 0 0 15px rgba(255,185,183,0.7); /* pink halo */
+    box-shadow: 0 0 15px rgba(255,241,167,0.7); /* pastel yellow halo */
 }
 
 .user-bubble {
-    background-color: #c6d7e6; /* light blue */
-    border: 2px solid #d1ddb4; /* green accent */
+    background-color: var(--light-blue);
+    border: 2px solid var(--pastel-green);
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: #ffb9b7; /* light pink */
-    border: 2px solid #d8c5dd; /* lavender accent */
+    background-color: var(--light-pink);
+    border: 2px solid var(--ffb9b7);
     align-self: flex-start;
 }
 
-/* --- Chat container --- */
+/* ----------------- Chat container ----------------- */
 .chat-container {
     display: flex;
     flex-direction: column;
 }
 
-/* --- Buttons --- */
+/* ----------------- Buttons ----------------- */
 .stButton>button {
-    background-color: #fff1a7 !important; /* pastel yellow */
-    color: #000 !important;
-    border: 2px solid #d8c5dd !important;
+    background-color: var(--pastel-yellow) !important;
+    color: var(--text-dark) !important;
+    border: 2px solid var(--light-pink) !important;
     border-radius: 15px !important;
     font-size: 14px;
     padding: 12px 20px;
@@ -119,48 +115,37 @@ header, [data-testid="stHeader"] {
 }
 
 .stButton>button:hover {
-    background-color: #d1ddb4 !important; /* light green hover */
+    background-color: var(--light-blue) !important;
     transform: scale(1.05);
 }
 
-/* --- Text Inputs / Textareas --- */
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {
-    background-color: #d8c5dd; /* pastel lavender */
-    border: 2px solid #d1ddb4; /* green accent */
+/* ----------------- Inputs & Selects ----------------- */
+.stTextInput>div>div>input, 
+.stTextArea>div>div>textarea,
+.stSelectbox>div>div>div {
+    background-color: var(--light-pink);
+    border: 2px solid var(--light-pink);
     border-radius: 12px;
-    color: #000;
+    color: var(--text-dark);
     font-family: 'Comfortaa', cursive;
     padding: 8px;
 }
 
-/* --- Vibe Dropdown / Selectbox --- */
-.stSelectbox>div>div>div {
-    background-color: #d8c5dd !important; /* lavender */
-    border: 2px solid #d1ddb4 !important; /* green border */
-    border-radius: 12px !important;
-    color: #000 !important; /* black text */
-    font-family: 'Comfortaa', cursive !important;
-    padding: 6px 8px !important;
-}
-.stSelectbox>div>div>div:hover {
-    border-color: #ffb9b7 !important; /* pink hover accent */
-}
-
-/* --- Twinkling Pixel Stars ✨ --- */
+/* ----------------- Twinkling Pixel Stars ----------------- */
 .star {
     position: absolute;
     font-size: 16px;
-    color: #fff1a7; /* pastel yellow */
+    color: var(--pastel-yellow);
     animation: twinkle 2s infinite;
 }
 
-/* Twinkle Animation */
 @keyframes twinkle {
     0%, 100% { opacity: 0.3; }
     50% { opacity: 1; }
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
