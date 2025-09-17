@@ -33,7 +33,7 @@ st.set_page_config(
 )
 # -----------------------------------------------------------------------------
 
-# --- CSS for Light Blue / Light Pink Halo Style ---
+# --- CSS with twinkling pixel stars ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
@@ -42,6 +42,19 @@ body {
     font-family: 'Comfortaa', cursive;
     background: linear-gradient(135deg, #A0E7E5, #FFB6C1);
     color: #333;
+    overflow: hidden; /* ensures stars don’t create scrollbars */
+}
+
+/* Pixelated title */
+.pixel-title {
+    text-align: center;
+    font-size: 60px;
+    font-family: 'Comfortaa', cursive;
+    color: #000;
+    text-shadow:
+        2px 2px #fff,
+        4px 4px #FFB6C1,
+        6px 6px #000;
 }
 
 /* Chat bubbles */
@@ -52,22 +65,22 @@ body {
     border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    box-shadow: 0 0 15px rgba(255,182,193,0.7); /* pink halo */
+    box-shadow: 0 0 15px rgba(255,182,193,0.7);
 }
 
 .user-bubble {
-    background-color: #E0F7FA; /* light blue for user */
+    background-color: #E0F7FA; 
     border: 2px solid #A0E7E5;
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: #FFF0F5; /* light pink for bot */
+    background-color: #FFF0F5; 
     border: 2px solid #FFB6C1;
     align-self: flex-start;
 }
 
-/* Flex container for chat */
+/* Chat container */
 .chat-container {
     display: flex;
     flex-direction: column;
@@ -98,8 +111,32 @@ body {
     font-family: 'Comfortaa', cursive;
     padding: 8px;
 }
+
+/* Twinkling Pixel Stars */
+.star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background-color: #FFFACD; /* pastel yellow */
+    animation: twinkle 2s infinite;
+    box-shadow:
+        10px 20px #FFFACD,
+        50px 80px #FFFACD,
+        120px 40px #FFFACD,
+        200px 150px #FFFACD,
+        300px 90px #FFFACD,
+        400px 200px #FFFACD;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
 </style>
 """, unsafe_allow_html=True)
+
+
+
 
 
 # ----------------------------- Header image ----------------------------------
@@ -112,10 +149,14 @@ try:
 except Exception as e:
     st.error(f"Error loading image: {e}")
 
-st.markdown(
-    "<h1 style='text-align: center;'>Bearfruit, Your ASU Event Finder Assistant</h1>",
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<h1 class="pixel-title">Bearfruit</h1>
+<p style="text-align:center; font-family:'Comfortaa', cursive;">Your ASU Event Finder Assistant</p>
+<!-- Twinkling stars -->
+<div class="star"></div>
+""", unsafe_allow_html=True)
+
+
 st.caption("Please be patient, sometimes I take extra time to think.")
 # -----------------------------------------------------------------------------
 
