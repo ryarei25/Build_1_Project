@@ -219,7 +219,7 @@ vibe = st.selectbox(
 )
 
 personality_type = st.text_input(
-    "Enter your 16-personality type (optional, e.g., INFP, ESTJ)"
+    "Enter your 16-personality type (optional, e.g., INFP, ESTJ) - If you don't know, no worries! Just ask Bearfruit to identify your personality type."
 )
 
 keywords = st.text_input(
