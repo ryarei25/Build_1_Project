@@ -23,6 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
 # ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
@@ -152,8 +153,12 @@ select, option {
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Star field HTML ------------------------
+# ----------------------------- Header Image & Title ------------------------
 st.markdown("""
+<div style="text-align:center; margin-bottom:20px;">
+    <img src="header.png" alt="Bearfruit Header" style="max-width: 80%; height: auto; border-radius: 12px;">
+</div>
+
 <div class="pixel-title-container">
     <h1 class="pixel-title">Bearfruit</h1>
 </div>
@@ -169,6 +174,7 @@ for(let i=0;i<60;i++){
 </script>
 <p class="subtitle">Your ASU Event Finder Assistant</p>
 """, unsafe_allow_html=True)
+
 
 # ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
