@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import requests
 import streamlit as st
 from PIL import Image
+import dateparser
 
 # --- Google GenAI Models import ---------------------------
 from google import genai
@@ -98,9 +99,8 @@ except Exception as e:
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("uploaded_files", [])
 st.session_state.setdefault("user_personality", None)
-#new code to keep track of quiz stage and progress
 st.session_state.setdefault("quiz_stage", "none")       # 'none'|'offered'|'in_progress'|'completed'
-st.session_state.setdefault("quiz_progress", 0)         # index of current quiz step
+st.session_state.setdefault("quiz_progress", 0)
 # -----------------------------------------------------------------------------
 
 
@@ -209,33 +209,6 @@ with st.sidebar:
             st.caption(f"{5 - len(st.session_state.uploaded_files)} slots remaining.")
         else:
             st.caption("No files attached.")
-
-    # Show & delete server-stored files (developer)
-    with st.expander("🛠️ Developer: See and Delete all files stored on Google server", expanded=False):
-        try:
-            files_list = client.files.list()
-            if not files_list:
-                st.caption("No active files on server.")
-            else:
-                for f in files_list:
-                    exp = getattr(f, "expiration_time", None) or "?"
-                    size = getattr(f, "size_bytes", None)
-                    size_str = f"{size/1024:.1f} KB" if size else "?"
-                    st.write(f"• **{f.name}** ({f.mime_type}, {size_str})  Expires: {exp}")
-                if st.button("🗑️ Delete all files", use_container_width=True):
-                    failed = []
-                    for f in files_list:
-                        try:
-                            client.files.delete(name=f.name)
-                        except Exception:
-                            failed.append(f.name)
-                    if failed:
-                        st.error(f"Failed to delete: {', '.join(failed)}")
-                    else:
-                        st.success("All files deleted from server.")
-                        st.rerun()
-        except Exception as e:
-            st.error(f"Could not fetch files list: {e}")
 # -----------------------------------------------------------------------------
 
 
@@ -321,28 +294,24 @@ def fetch_asu_events():
 if "asu_events" not in st.session_state:
     st.session_state.asu_events = fetch_asu_events()
 
-filter_keyword = st.text_input("Filter events by keyword (leave blank for all):").lower()
-if filter_keyword:
-    filtered_events = [
-        e
-        for e in st.session_state.asu_events
-        if filter_keyword in e["title"].lower()
-    ]
-else:
-    filtered_events = st.session_state.asu_events
+# --- Event filtering helpers ---
+def get_events_for_date(query: str, events: list):
+    """Parse a date from user input and return matching events."""
+    # Try parsing natural language date (e.g. "tomorrow", "Friday")
+    target_date = dateparser.parse(query, settings={"PREFER_DATES_FROM": "future"})
+    if target_date:
+        same_day_events = [e for e in events if e["start"].date() == target_date.date()]
+        return target_date, same_day_events
 
-st.session_state.filtered_events_for_ai = filtered_events
+    # Try parsing ranges like "Sept 20–25" or "next weekend"
+    range_dates = dateparser.search.search_dates(query, settings={"PREFER_DATES_FROM": "future"})
+    if range_dates and len(range_dates) >= 2:
+        start_date = range_dates[0][1]
+        end_date = range_dates[-1][1]
+        range_events = [e for e in events if start_date.date() <= e["start"].date() <= end_date.date()]
+        return (start_date, end_date), range_events
 
-if filtered_events:
-    event_texts = []
-    for e in filtered_events[:10]:
-        start_str = e["start"].strftime("%a, %b %d %I:%M %p")
-        end_str = e["end"].strftime("%I:%M %p") if e["end"] else "N/A"
-        location = e["location"] or "No location specified"
-        event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
-    events_summary = "<h3>Upcoming ASU events matching your preferences:</h3>" + "<br>".join(event_texts)
-else:
-    events_summary = "No events match your filter."
+    return None, []
 # -----------------------------------------------------------------------------
 
 
@@ -371,23 +340,26 @@ def get_personality_text():
     elif st.session_state.uploaded_files:
         return "User uploaded a personality PDF; infer personality type from it."
     else:
-        return "User personality unknown" # changed cause code handles offering quiz
+        return "User personality unknown"
 
-# New code for handling user resposne to quiz offer
+
 def user_said_yes(text: str) -> bool:
     t = text.strip().lower()
     return any(p in t for p in ("yes", "yep", "yeah", "sure", "ok", "okay", "let's do it", "sounds good"))
+
 
 def user_said_no(text: str) -> bool:
     t = text.strip().lower()
     return any(p in t for p in ("no", "nope", "not now", "skip", "maybe later"))
 
+
 def seems_like_preference(text: str) -> bool:
     t = text.strip().lower()
-    #  heuristic: a single keyword like "book", "music", "art", etc. counts as a preference
-    keywords = ("book", "music", "art", "movie", "film", "concert", "sports", "game",
-                "coding", "tech", "volunteer", "career", "network", "dance", "outdoor",
-                "hiking", "writing", "poetry", "club", "workshop")
+    keywords = (
+        "book", "music", "art", "movie", "film", "concert", "sports", "game",
+        "coding", "tech", "volunteer", "career", "network", "dance", "outdoor",
+        "hiking", "writing", "poetry", "club", "workshop"
+    )
     return any(k in t for k in keywords)
 # -----------------------------------------------------------------------------
 
@@ -400,65 +372,77 @@ if user_prompt := st.chat_input("Message your bot…"):
 
     personality_text = get_personality_text()
 
-    # ---- Aware of xonversation state to stop re-offering the quiz ----
+    # Quiz state handling
     if user_said_yes(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
         st.session_state.quiz_stage = "in_progress"
-        st.session_state.quiz_progress = max(st.session_state.quiz_progress, 0)
     elif user_said_no(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
-        st.session_state.quiz_stage = "completed"  # don't ask again
+        st.session_state.quiz_stage = "completed"
     elif seems_like_preference(user_prompt):
-        st.session_state.quiz_stage = "completed"  # treat concrete prefs as enough; skip quiz
+        st.session_state.quiz_stage = "completed"
     elif st.session_state.quiz_stage == "none":
-        st.session_state.quiz_stage = "offered"    # first contact with unknown prefs
+        st.session_state.quiz_stage = "offered"
 
-    # Filter events based on user input + next week
-    filter_keyword = user_prompt.lower()
-    now = datetime.now()
-    one_week = now + timedelta(days=7)
-    filtered_events = [
-        e
-        for e in st.session_state.asu_events
-        if (filter_keyword in e["title"].lower() or filter_keyword in e.get("location", "").lower())
-        and now <= e["start"] <= one_week
-    ]
-    if filtered_events:
-        event_texts = []
-        for e in filtered_events[:10]:
-            start_str = e["start"].strftime("%a, %b %d %I:%M %p")
-            end_str = e.get("end").strftime("%I:%M %p") if e.get("end") else "N/A"
-            location = e.get("location", "No location specified")
-            event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
-        events_summary = "<h3>Here are upcoming events based on your preferences and next week timing:</h3>" + "<br>".join(event_texts)
+    # --- Event filtering ---
+    target, events_found = get_events_for_date(user_prompt, st.session_state.asu_events)
+    if target and events_found:
+        if isinstance(target, tuple):  # range
+            start, end = target
+            event_texts = [
+                f"- {e['title']} on {e['start'].strftime('%a %b %d %I:%M %p')} ({e['location']})"
+                for e in events_found[:10]
+            ]
+            events_summary = f"<h3>Events between {start.strftime('%b %d')} and {end.strftime('%b %d')}:</h3>" + "<br>".join(event_texts)
+        else:  # single date
+            event_texts = [
+                f"- {e['title']} at {e['start'].strftime('%I:%M %p')} ({e['location']})"
+                for e in events_found[:10]
+            ]
+            events_summary = f"<h3>Events on {target.strftime('%A, %b %d')}:</h3>" + "<br>".join(event_texts)
     else:
-        events_summary = "No events match your criteria for the next week."
+        # fallback to keyword + next week
+        filter_keyword = user_prompt.lower()
+        now = datetime.now()
+        one_week = now + timedelta(days=7)
+        filtered_events = [
+            e for e in st.session_state.asu_events
+            if (filter_keyword in e["title"].lower() or filter_keyword in e.get("location", "").lower())
+            and now <= e["start"] <= one_week
+        ]
+        if filtered_events:
+            event_texts = [
+                f"- {e['title']} ({e['start'].strftime('%a, %b %d %I:%M %p')} – {e['end'].strftime('%I:%M %p') if e.get('end') else 'N/A'}) at {e.get('location','No location')}"
+                for e in filtered_events[:10]
+            ]
+            events_summary = "<h3>Here are upcoming events in the next week:</h3>" + "<br>".join(event_texts)
+        else:
+            events_summary = "No events match your criteria."
 
-    #Additional Code changes to keep track of stage o qus
+    # State directive for AI
     state_directive = f"""
 APP_STATE:
 - quiz_stage: {st.session_state.quiz_stage}
 - quiz_progress: {st.session_state.quiz_progress}
 
-GUIDANCE FOR ASSISTANT (follow strictly):
-- If quiz_stage == 'offered' and the user accepted (e.g., said yes), start Quiz Question 1 now. Do NOT re-offer the quiz.
-- If quiz_stage == 'in_progress', ask exactly one next quiz question. Do NOT re-offer the quiz.
-- If quiz_stage == 'completed', never re-offer the quiz; use known preferences/answers to recommend events/clubs.
-- If the user provides clear preferences at any time, skip/stop the quiz and recommend events/clubs accordingly.
+GUIDANCE FOR ASSISTANT:
+- If quiz_stage == 'offered' and the user accepted, start Quiz Question 1 now.
+- If quiz_stage == 'in_progress', ask exactly one next quiz question.
+- If quiz_stage == 'completed', never re-offer the quiz.
+- If the user provides clear preferences, skip the quiz and recommend events/clubs.
 """
 
     user_prompt_with_events = f"""
-
 User message: {user_prompt}
 
 Personality context: {personality_text}
 
 Personality database: {json.dumps(personalities)}
 
-Upcoming events (next week): {events_summary}
+Upcoming events: {events_summary}
 
 {state_directive}
 Instructions:
 1. Recommend events that best match the user's preferences and personality.
-2. If the user's personality is unknown **and** quiz_stage == 'none', invite a short quiz; otherwise follow APP_STATE above (do not re-offer).
+2. If the user's personality is unknown and quiz_stage == 'none', invite a short quiz; otherwise follow APP_STATE.
 3. Be friendly and concise.
 """
 
@@ -478,4 +462,4 @@ Instructions:
 
         except Exception as e:
             st.error(f"❌ Error from Gemini: {e}")
-# -----------------------------------------------------------------------------
+
