@@ -16,7 +16,6 @@ from PIL import Image
 # --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types
-# -----------------------------------------------------------------------------
 
 # --- Optional: Natural language date parsing ---------------------------
 try:
@@ -53,7 +52,6 @@ st.caption("Please be patient, sometimes I take extra time to think.")
 
 # ----------------------------- Helpers ---------------------------------------
 def load_developer_prompt() -> str:
-    """Load system instructions from identity.txt if present; fallback to a default."""
     try:
         with open("identity.txt", encoding="utf-8-sig") as f:
             return f.read()
@@ -189,20 +187,186 @@ def fetch_asu_events():
 if "asu_events" not in st.session_state:
     st.session_state.asu_events = fetch_asu_events()
 
-# Optional: Natural language filter with dateparser
-date_filter = st.text_input("Enter a date or time frame (e.g. 'next Friday', 'September 20'):")
-
-if date_filter and dateparser:
-    parsed_date = dateparser.parse(date_filter)
-    if parsed_date:
-        filtered_events = [
-            e for e in st.session_state.asu_events
-            if e["start"].date() == parsed_date.date()
-        ]
+# ----------------------------- Personality JSON -----------------------------
+JSON_PATH = Path(__file__).with_name("16personalities.json")
+personalities: list = []
+try:
+    if JSON_PATH.exists():
+        personalities = json.loads(JSON_PATH.read_text(encoding="utf-8-sig"))
+        st.success(f"Loaded {len(personalities)} personality entries!")
     else:
-        st.warning(f"Could not parse '{date_filter}' into a date.")
-        filtered_events = st.session_state.asu_events
-else:
-    filtered_events = st.session_state.asu_events
+        st.warning("⚠️ '16personalities.json' not found; continuing without personality data.")
+except json.JSONDecodeError as e:
+    st.error(f"Invalid JSON in {JSON_PATH.name}: {e}. Continuing without personality data.")
+except Exception as e:
+    st.error(f"Unexpected error loading {JSON_PATH.name}: {e}. Continuing without personality data.")
+
+# ----------------------------- Optional Filters ---------------------------------
+st.markdown("### 🎯 Optional Filters for Event Recommendations")
+
+st.info(
+    "You don't have to fill these fields. "
+    "You can leave them blank and tell the bot about your vibe, personality, or interests organically in the chat."
+)
+
+time_frame = st.text_input(
+    "Enter a date or time frame (optional, e.g., 'next Friday', 'Sept 20')"
+)
+
+vibe = st.selectbox(
+    "Select your vibe/mood (optional)",
+    options=["Any", "Chill", "Energetic", "Creative", "Social", "Learning"]
+)
+
+personality_type = st.text_input(
+    "Enter your 16-personality type (optional, e.g., INFP, ESTJ)"
+)
+
+keywords = st.text_input(
+    "Enter keywords for your interests (optional, comma-separated, e.g., music, coding, hiking)"
+)
+
+# ----------------------------- Chat replay container -------------------------
+with st.container():
+    for msg in st.session_state.chat_history:
+        avatar = "👤" if msg["role"] == "user" else ":material/robot_2:"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["parts"])
+
+# ----------------------------- Files API helper ------------------------------
+def _ensure_files_active(files, max_wait_s: float = 12.0):
+    deadline = time.time() + max_wait_s
+    any_processing = True
+    while any_processing and time.time() < deadline:
+        any_processing = False
+        for i, meta in enumerate(files):
+            fobj = meta["file"]
+            if getattr(fobj, "state", "") not in ("ACTIVE",):
+                any_processing = True
+                try:
+                    updated = client.files.get(name=fobj.name)
+                    files[i]["file"] = updated
+                except Exception:
+                    pass
+        if any_processing:
+            time.sleep(0.6)
 # -----------------------------------------------------------------------------
+
+# ----------------------------- User Helpers ----------------------------------
+def get_personality_text():
+    if st.session_state.get("user_personality"):
+        return f"User personality: {st.session_state['user_personality']}"
+    elif st.session_state.uploaded_files:
+        return "User uploaded a personality PDF; infer personality type from it."
+    else:
+        return "User personality unknown"
+
+def user_said_yes(text: str) -> bool:
+    t = text.strip().lower()
+    return any(p in t for p in ("yes", "yep", "yeah", "sure", "ok", "okay", "let's do it", "sounds good"))
+
+def user_said_no(text: str) -> bool:
+    t = text.strip().lower()
+    return any(p in t for p in ("no", "nope", "not now", "skip", "maybe later"))
+
+def seems_like_preference(text: str) -> bool:
+    t = text.strip().lower()
+    keywords = ("book", "music", "art", "movie", "film", "concert", "sports", "game",
+                "coding", "tech", "volunteer", "career", "network", "dance", "outdoor",
+                "hiking", "writing", "poetry", "club", "workshop")
+    return any(k in t for k in keywords)
+
+# ----------------------------- Chat input / send -----------------------------
+if user_prompt := st.chat_input("Message your bot…"):
+    st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_prompt)
+
+    personality_text = get_personality_text()
+
+    if user_said_yes(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
+        st.session_state.quiz_stage = "in_progress"
+        st.session_state.quiz_progress = max(st.session_state.quiz_progress, 0)
+    elif user_said_no(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
+        st.session_state.quiz_stage = "completed"
+    elif seems_like_preference(user_prompt):
+        st.session_state.quiz_stage = "completed"
+    elif st.session_state.quiz_stage == "none":
+        st.session_state.quiz_stage = "offered"
+
+    # ------------------- Event Filtering -------------------
+    filtered_events = st.session_state.asu_events
+
+    # Time frame filter if entered
+    if time_frame and dateparser:
+        parsed_date = dateparser.parse(time_frame)
+        if parsed_date:
+            filtered_events = [e for e in filtered_events if e["start"].date() == parsed_date.date()]
+
+    # Vibe filter
+    if vibe and vibe != "Any":
+        filtered_events = [e for e in filtered_events if vibe.lower() in e.get("title", "").lower()]
+
+    # Personality filter
+    if personality_type:
+        filtered_events = [e for e in filtered_events
+                           if personality_type.upper() in (st.session_state.get("user_personality", "").upper() or "")]
+
+    # Keywords filter
+    if keywords:
+        keyword_list = [k.strip().lower() for k in keywords.split(",")]
+        filtered_events = [e for e in filtered_events if any(k in e.get("title", "").lower() for k in keyword_list)]
+
+    # Summarize events for bot
+    if filtered_events:
+        event_texts = []
+        for e in filtered_events[:10]:
+            start_str = e["start"].strftime("%a, %b %d %I:%M %p")
+            end_str = e.get("end").strftime("%I:%M %p") if e.get("end") else "N/A"
+            location = e.get("location", "No location specified")
+            event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
+        events_summary = "<h3>Here are upcoming events based on your filters:</h3>" + "<br>".join(event_texts)
+    else:
+        events_summary = "No events match your criteria for the next week."
+
+    # ------------------- Chat Prompt -------------------
+    state_directive = f"""
+APP_STATE:
+- quiz_stage: {st.session_state.quiz_stage}
+- quiz_progress: {st.session_state.quiz_progress}
+"""
+    user_prompt_with_events = f"""
+User message: {user_prompt}
+
+Personality context: {personality_text}
+
+Personality database: {json.dumps(personalities)}
+
+Upcoming events (next week / filtered): {events_summary}
+
+{state_directive}
+
+Instructions:
+1. Recommend events that best match the user's preferences and personality.
+2. If the user's personality is unknown **and** quiz_stage == 'none', invite a short quiz; otherwise follow APP_STATE above (do not re-offer).
+3. Be friendly and concise.
+"""
+
+    with st.chat_message("assistant", avatar=":material/robot_2:"):
+        try:
+            contents_to_send = [types.Part(text=user_prompt_with_events)]
+            if st.session_state.uploaded_files:
+                _ensure_files_active(st.session_state.uploaded_files)
+                for meta in st.session_state.uploaded_files:
+                    contents_to_send.append(meta["file"])
+
+            response = st.session_state.chat.send_message(contents_to_send)
+            full_response = response.text if hasattr(response, "text") else str(response)
+
+            st.markdown(full_response)
+            st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
+
+        except Exception as e:
+            st.error(f"❌ Error from Gemini: {e}")
+
 
