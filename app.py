@@ -33,6 +33,75 @@ st.set_page_config(
 )
 # -----------------------------------------------------------------------------
 
+# --- CSS for Light Blue / Light Pink Halo Style ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
+
+body {
+    font-family: 'Comfortaa', cursive;
+    background: linear-gradient(135deg, #A0E7E5, #FFB6C1);
+    color: #333;
+}
+
+/* Chat bubbles */
+.chat-bubble {
+    max-width: 70%;
+    padding: 12px 16px;
+    margin: 8px 0;
+    border-radius: 20px;
+    font-family: 'Comfortaa', cursive;
+    font-size: 14px;
+    box-shadow: 0 0 15px rgba(255,182,193,0.7); /* pink halo */
+}
+
+.user-bubble {
+    background-color: #E0F7FA; /* light blue for user */
+    border: 2px solid #A0E7E5;
+    align-self: flex-end;
+}
+
+.bot-bubble {
+    background-color: #FFF0F5; /* light pink for bot */
+    border: 2px solid #FFB6C1;
+    align-self: flex-start;
+}
+
+/* Flex container for chat */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Buttons */
+.stButton>button {
+    background-color: #FFFA87 !important;
+    color: #333 !important;
+    border: 2px solid #FFB6C1 !important;
+    border-radius: 15px !important;
+    font-size: 14px;
+    padding: 12px 20px;
+    transition: all 0.2s ease-in-out;
+}
+
+.stButton>button:hover {
+    background-color: #A0E7E5 !important;
+    transform: scale(1.05);
+}
+
+/* Inputs */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    background-color: #fff0f5;
+    border: 2px solid #FFB6C1;
+    border-radius: 12px;
+    color: #333;
+    font-family: 'Comfortaa', cursive;
+    padding: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ----------------------------- Header image ----------------------------------
 try:
     st.image(
@@ -368,5 +437,15 @@ Instructions:
 
         except Exception as e:
             st.error(f"❌ Error from Gemini: {e}")
+
+
+# --- Display chat using styled bubbles ---
+for msg in st.session_state.chat_history:
+    bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+    st.markdown(
+        f'<div class="chat-container"><div class="chat-bubble {bubble_class}">{msg["parts"]}</div></div>',
+        unsafe_allow_html=True
+    )
+
 
 
