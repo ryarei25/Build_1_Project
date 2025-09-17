@@ -156,7 +156,7 @@ select, option {
 # ----------------------------- Header Image & Title ------------------------
 st.markdown("""
 <div style="text-align:center; margin-bottom:20px;">
-    <img src="header.png" alt="Bearfruit Header" style="max-width: 80%; height: auto; border-radius: 12px;">
+    <img src="Bot.png" alt="Bearfruit Header" style="max-width: 80%; height: auto; border-radius: 12px;">
 </div>
 
 <div class="pixel-title-container">
