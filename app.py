@@ -33,107 +33,109 @@ st.set_page_config(
 )
 # -----------------------------------------------------------------------------
 
-# --- CSS with twinkling pixel stars ---
+# --- Page Header / Styling ---
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 
+/* --- Background --- */
 body {
-    font-family: 'Comfortaa', cursive;
-    background: linear-gradient(135deg, #A0E7E5, #FFB6C1);
-    color: #333;
-    overflow: hidden; /* ensures stars don’t create scrollbars */
+    background-color: #A0E7E5 !important;  /* light blue background */
+    font-family: 'Comfortaa', cursive !important;
 }
 
-/* Pixelated title */
+/* --- Pixel Title with black fill & outline --- */
 .pixel-title {
-    text-align: center;
-    font-size: 60px;
-    font-family: 'Comfortaa', cursive;
-    color: #000;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 48px;
+    font-weight: bold;
+    color: black;
     text-shadow:
-        2px 2px #fff,
-        4px 4px #FFB6C1,
-        6px 6px #000;
+        2px 0 #FFB6C1,
+        -2px 0 #FFB6C1,
+        0 2px #FFB6C1,
+        0 -2px #FFB6C1,
+        1px 1px #FFFFFF,
+        -1px -1px #FFFFFF;
+    text-align: center;
+    margin: 12px 0 4px 0;
 }
 
-/* Chat bubbles */
-.chat-bubble {
-    max-width: 70%;
-    padding: 12px 16px;
-    margin: 8px 0;
-    border-radius: 20px;
+/* --- Subtitle --- */
+.pixel-subtitle {
+    text-align: center;
     font-family: 'Comfortaa', cursive;
-    font-size: 14px;
-    box-shadow: 0 0 15px rgba(255,182,193,0.7);
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 24px;
 }
 
-.user-bubble {
-    background-color: #E0F7FA; 
-    border: 2px solid #A0E7E5;
-    align-self: flex-end;
+/* --- Twinkling stars --- */
+.star {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: #FFD700;  /* pastel yellow */
+    margin: 1px;
+    animation: twinkle 1.5s infinite alternate;
 }
 
-.bot-bubble {
-    background-color: #FFF0F5; 
-    border: 2px solid #FFB6C1;
-    align-self: flex-start;
+@keyframes twinkle {
+    0% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.3; transform: scale(1); }
 }
 
-/* Chat container */
-.chat-container {
-    display: flex;
-    flex-direction: column;
+/* --- Input boxes / dropdowns --- */
+.stTextInput>div>div>input, 
+.stTextArea>div>div>textarea, 
+.css-1hwfws3, /* dropdown container */
+.stSelectbox>div>div>div>select {
+    background-color: #fff0f5 !important;
+    border: 2px solid #FFB6C1 !important;
+    border-radius: 12px !important;
+    color: #333 !important;
+    font-family: 'Comfortaa', cursive !important;
+    padding: 8px !important;
 }
 
-/* Buttons */
+/* --- Buttons --- */
 .stButton>button {
     background-color: #FFFA87 !important;
     color: #333 !important;
     border: 2px solid #FFB6C1 !important;
     border-radius: 15px !important;
-    font-size: 14px;
-    padding: 12px 20px;
-    transition: all 0.2s ease-in-out;
+    font-size: 14px !important;
+    padding: 12px 20px !important;
 }
-
 .stButton>button:hover {
     background-color: #A0E7E5 !important;
     transform: scale(1.05);
 }
-
-/* Inputs */
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {
-    background-color: #fff0f5;
-    border: 2px solid #FFB6C1;
-    border-radius: 12px;
-    color: #333;
-    font-family: 'Comfortaa', cursive;
-    padding: 8px;
-}
-
-/* Twinkling Pixel Stars */
-.star {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    background-color: #FFFACD; /* pastel yellow */
-    animation: twinkle 2s infinite;
-    box-shadow:
-        10px 20px #FFFACD,
-        50px 80px #FFFACD,
-        120px 40px #FFFACD,
-        200px 150px #FFFACD,
-        300px 90px #FFFACD,
-        400px 200px #FFFACD;
-}
-
-@keyframes twinkle {
-    0%, 100% { opacity: 0.2; }
-    50% { opacity: 1; }
-}
 </style>
+
+<!-- --- Title and stars --- -->
+<div style="text-align:center;">
+    <div>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+    </div>
+    <h1 class="pixel-title">Bearfruit</h1>
+    <p class="pixel-subtitle">Your ASU Event Finder Assistant</p>
+    <div>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+        <span class="star"></span>
+    </div>
+</div>
 """, unsafe_allow_html=True)
+
 
 
 
