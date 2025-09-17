@@ -31,21 +31,21 @@ st.markdown("""
 /* --- Background & general body --- */
 body {
     font-family: 'Comfortaa', cursive;
-    background: linear-gradient(135deg, #C6D7E6, #FFCDEB);
+    background: linear-gradient(135deg, #C6D7E6, #FFB9B7);
     color: #333;
     overflow-x: hidden;
 }
 
 /* --- Sidebar --- */
 [data-testid="stSidebar"] {
-    background-color: #E5DBFF !important; /* updated lavender */
+    background-color: #D1DDB4 !important;
     color: #333;
-    border-right: 2px solid #C6D7E6;
+    border-right: 2px solid #D8C5DD;
 }
 
 /* --- Top bar (menu) --- */
 header {
-    background-color: #FFCDEB !important; /* pink */
+    background-color: #CCE7FF !important;
 }
 
 /* --- Pixelated Bearfruit Title --- */
@@ -61,7 +61,7 @@ header {
     text-shadow:
         2px 2px #EBB7FB,
         4px 4px #FFE4A4,
-        6px 6px #CCE7FF;
+        6px 6px #D1DDB4;
     display: inline-block;
     z-index: 2;
 }
@@ -71,7 +71,7 @@ header {
     position: absolute;
     width: 2px;
     height: 2px;
-    background-color: #FFE4A4; /* soft yellow */
+    background-color: #FFE4A4;
     animation: twinkle 2s infinite;
 }
 @keyframes twinkle {
@@ -88,20 +88,18 @@ header {
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
     border: 2px solid;
-    box-shadow: 2px 2px 0 #CCE7FF;
+    box-shadow: 2px 2px 0 #D8C5DD;
 }
 
 .user-bubble {
-    background-color: #D9FEC9;  /* soft green */
-    border-color: #CCE7FF;
-    color: #333;
+    background-color: #CCE7FF;
+    border-color: #C6D7E6;
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: #D9FEC9;  /* soft green */
-    border-color: #CCE7FF;
-    color: #333;
+    background-color: #FFB9B7;
+    border-color: #D8C5DD;
     align-self: flex-start;
 }
 
@@ -115,8 +113,8 @@ header {
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stSelectbox>div>div>div[role="listbox"] {
-    background-color: #D9FEC9 !important;
-    border: 2px solid #CCE7FF;
+    background-color: #FFF1A7 !important;
+    border: 2px solid #D8C5DD;
     border-radius: 6px;
     color: #333;
     font-family: 'Comfortaa', cursive;
@@ -125,9 +123,9 @@ header {
 
 /* --- Buttons --- */
 .stButton>button {
-    background-color: #D9FEC9 !important;
+    background-color: #D8C5DD !important;
     color: #333 !important;
-    border: 2px solid #CCE7FF !important;
+    border: 2px solid #C6D7E6 !important;
     border-radius: 4px !important;
     font-size: 14px;
     padding: 10px 16px;
@@ -140,6 +138,23 @@ header {
 </style>
 """, unsafe_allow_html=True)
 
+# ----------------------------- Star field HTML ------------------------
+st.markdown("""
+<div class="pixel-title-container">
+    <h1 class="pixel-title">Bearfruit</h1>
+</div>
+<script>
+const container = document.querySelector('.pixel-title-container');
+for(let i=0;i<60;i++){
+    const star = document.createElement('div');
+    star.classList.add('star');
+    star.style.top = Math.random()*50 + 'px';
+    star.style.left = Math.random()*container.offsetWidth + 'px';
+    container.appendChild(star);
+}
+</script>
+<p style="text-align:center; font-family:'Comfortaa', cursive;">Your ASU Event Finder Assistant</p>
+""", unsafe_allow_html=True)
 
 # ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
