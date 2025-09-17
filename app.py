@@ -126,11 +126,23 @@ header {
     flex-direction: column;
 }
 
+/* --- Inputs & selectbox --- */
+.stTextInput>div>div>input,
+.stTextArea>div>div>textarea,
+.stSelectbox>div>div>div[role="listbox"],
+select, option {
+    background-color: #D9FEC9 !important;  /* light green vibe dropdown */
+    border: 2px solid #D8C5DD;
+    border-radius: 6px;
+    color: #333;
+    font-family: 'Comfortaa', cursive;
+    padding: 6px;
+}
 
 
 /* --- Selectboxes & dropdowns --- */
 .stSelectbox>label {
-    color:  #000 !important;  /* make "Choose a model" label black */
+    color: #333 !important;  /* make "Choose a model" label black */
 }
 
 .stSelectbox>div>div>div[role="selectbox"],
@@ -138,7 +150,7 @@ select, option {
     background-color: #D9FEC9 !important;  /* light green vibe dropdown */
     border: 2px solid #D8C5DD;
     border-radius: 6px;
-    color: #D9FEC9;
+    color: #333;
     font-family: 'Comfortaa', cursive;
     padding: 6px;
 }
