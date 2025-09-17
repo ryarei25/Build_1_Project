@@ -68,22 +68,16 @@ def load_developer_prompt() -> str:
             return f.read()
     except FileNotFoundError:
         st.warning("⚠️ 'identity.txt' not found. Using default prompt.")
-        return (
-            "You are a helpful assistant. "
-            "Be friendly, engaging, and provide clear, concise responses."
-        )
+        return "You are a helpful assistant. Be friendly, engaging, and provide clear, concise responses."
 
 # ----------------------------- Gemini config --------------------------
 try:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     system_instructions = load_developer_prompt()
-    search_tool = types.Tool(google_search=types.GoogleSearch())
     generation_cfg = types.GenerateContentConfig(
         system_instruction=system_instructions,
-        tools=[search_tool],
-        thinking_config=types.ThinkingConfig(thinking_budget=-1),
         temperature=1.0,
-        max_output_tokens=2048,
+        max_output_tokens=512,  # shorter output for safety
     )
 except Exception as e:
     st.error(f"Error initialising Gemini client: {e}")
@@ -191,41 +185,32 @@ if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
+    # --- Filter events ---
     filtered_events = filter_events(
         st.session_state.asu_events, user_prompt, time_frame, vibe, personality_type, keywords
     )
 
-    events_summary = "\n".join([
-        f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
-        for e in filtered_events
-    ]) or "No matching events found."
+    if filtered_events:
+        events_summary = "\n".join([
+            f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+            for e in filtered_events
+        ])
+        bot_reply = f"Here are some ASU events that match your preferences:\n\n{events_summary}"
+    else:
+        bot_reply = "No matching events found based on your preferences."
 
-    user_prompt_with_context = f"""
-User message: {user_prompt}
-Personality: {personality_type or st.session_state.get('user_personality','unknown')}
-Vibe: {vibe}
-Keywords: {keywords}
-Upcoming events:
-{events_summary}
-Instructions:
-1. Recommend events that best match user's personality, vibe, and preferences.
-2. Only suggest from filtered events.
-"""
-
+    # Optional: Gemini adds friendly commentary
     try:
-        response = st.session_state.chat.send_message(user_prompt_with_context)
-
-        # --- Gemini API output fix ---
-        bot_reply = ""
+        response = st.session_state.chat.send_message(f"Make this reply more friendly:\n{bot_reply}")
         if hasattr(response, "result") and response.result:
             content_blocks = getattr(response.result[0], "content", [])
             if content_blocks:
-                bot_reply = "".join(getattr(block, "text", "") for block in content_blocks)
-        if not bot_reply:
-            bot_reply = "⚠️ Gemini API returned no text."
-
-    except Exception as e:
-        bot_reply = f"⚠️ Error with Gemini chat: {e}"
+                gemini_text = "".join(getattr(block, "text", "") for block in content_blocks)
+                if gemini_text.strip():
+                    bot_reply = gemini_text
+    except Exception:
+        pass  # fallback to filtered events text
 
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
