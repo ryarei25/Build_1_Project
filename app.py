@@ -122,7 +122,7 @@ select, option {
 
 # --- Title ---
 st.markdown("""
-<h1 class="title"> ⋆｡ﾟ☁︎｡⋆｡ ﾟ☾ ﾟ｡⋆ BearFruit</h1>
+<h1 class="title"> 𖡼.𖤣𖥧𖡼.𖤣𖥧 BearFruit 𖥧𖤣.𖡼𖥧𖤣.𖡼 </h1>
 <p class="subtitle">Your Personalized ASU Event Finder </p>
 """, unsafe_allow_html=True)
 
