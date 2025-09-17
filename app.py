@@ -30,37 +30,34 @@ try:
 except FileNotFoundError:
     st.warning("Header image not found. Place 'header_image.png' in the app folder.")
 
-# ----------------------------- CSS & Theme ------------------------
+#---- CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
 
-/* --- Body background & general --- */
+/* --- Background & general body --- */
 body {
     font-family: 'Comfortaa', cursive;
-    background-color: #CCE7FF;
-    color: #333;
+    background-color: #2E2E2E;  /* dark grey background */
+    color: #FFF;
     overflow-x: hidden;
 }
 
 /* --- Sidebar --- */
 [data-testid="stSidebar"] {
-    background-color: #E5DBFF !important;
+    background-color: #E5DBFF !important; /* lavender */
     color: #333;
     border-right: 2px solid #D8C5DD;
 }
 
-/* Sidebar input & select boxes */
-[data-testid="stSidebar"] .stSelectbox>div>div>div[role="listbox"],
-[data-testid="stSidebar"] .stTextInput>div>div>input,
-[data-testid="stSidebar"] .stTextArea>div>div>textarea {
-    background-color: #D9FEC9 !important;
-    color: #333 !important;
-    border: 2px solid #D8C5DD;
-    border-radius: 6px;
+/* Sidebar titles & selectboxes */
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] h3, 
+[data-testid="stSidebar"] .stSelectbox label {
+    color: #000;  /* black text */
 }
 
-/* --- Top bar --- */
+/* --- Top bar (menu) --- */
 header {
     background-color: #FFCDEB !important;
 }
@@ -73,12 +70,16 @@ header {
 }
 .pixel-title {
     font-family: 'Press Start 2P', cursive;
-    font-size: 80px;
-    color: #000; /* black inside for readability */
+    font-size: 80px;  
+    color: #FFF;       /* inside color */
     text-shadow:
-        2px 2px #EBC7FB,
-        4px 4px #FFE4A4,
-        6px 6px #D9FEC9;
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000,
+        2px 2px 0 #000,  /* black outline */
+        4px 4px #EBC7FB,
+        6px 6px #FFE4A4,
+        8px 8px #D9FEC9;
     display: inline-block;
     z-index: 2;
 }
@@ -86,23 +87,25 @@ header {
 /* --- Pixel stars --- */
 .star {
     position: absolute;
-    width: 2px;
-    height: 2px;
+    width: 3px;
+    height: 3px;
     background-color: #FFE4A4;
-    animation: twinkle 2s infinite;
+    border-radius: 50%;
+    animation: twinkle 1.5s infinite alternate;
 }
 @keyframes twinkle {
-    0%,100% {opacity:0.2;}
-    50% {opacity:1;}
+    0% {opacity:0.3; transform: scale(1);}
+    50% {opacity:1; transform: scale(1.5);}
+    100% {opacity:0.3; transform: scale(1);}
 }
 
 /* --- Subtitle --- */
 .subtitle {
     text-align:center;
     font-family:'Comfortaa', cursive;
-    font-size:18px;
+    font-size:20px;
     margin-bottom: 20px;
-    color: #333;
+    color: #FFF;
 }
 
 /* --- Chat bubbles --- */
@@ -116,11 +119,13 @@ header {
     border: 2px solid;
     box-shadow: 2px 2px 0 #D8C5DD;
 }
+
 .user-bubble {
     background-color: #CCE7FF;
     border-color: #D9FEC9;
     align-self: flex-end;
 }
+
 .bot-bubble {
     background-color: #FFCDEB;
     border-color: #EBC7FB;
@@ -137,12 +142,18 @@ header {
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stSelectbox>div>div>div[role="listbox"] {
-    background-color: #D9FEC9 !important;
+    background-color: #D9FEC9 !important;  /* light green */
     border: 2px solid #D8C5DD;
     border-radius: 6px;
-    color: #333;
+    color: #333 !important;
     font-family: 'Comfortaa', cursive;
     padding: 6px;
+}
+
+/* Placeholder color for inputs */
+.stTextInput>div>div>input::placeholder,
+.stTextArea>div>div>textarea::placeholder {
+    color: #666;
 }
 
 /* --- Buttons --- */
@@ -162,23 +173,6 @@ header {
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Pixel title & star field ------------------------
-st.markdown("""
-<div class="pixel-title-container">
-    <h1 class="pixel-title">Bearfruit</h1>
-</div>
-<script>
-const container = document.querySelector('.pixel-title-container');
-for(let i=0;i<80;i++){
-    const star = document.createElement('div');
-    star.classList.add('star');
-    star.style.top = Math.random()*80 + 'px';
-    star.style.left = Math.random()*container.offsetWidth + 'px';
-    container.appendChild(star);
-}
-</script>
-<p class="subtitle">Your ASU Event Finder Assistant</p>
-""", unsafe_allow_html=True)
 
 
 # ----------------------------- Helpers -----------------------------
