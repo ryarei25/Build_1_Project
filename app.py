@@ -12,13 +12,19 @@ from datetime import datetime, timedelta
 import requests
 import streamlit as st
 from PIL import Image
-import dateparser
 
 # --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types
 # -----------------------------------------------------------------------------
 
+# --- Optional: Natural language date parsing ---------------------------
+try:
+    import dateparser
+except ImportError:
+    dateparser = None
+    st.warning("⚠️ 'dateparser' not installed. Natural language date filters will be limited.")
+# -----------------------------------------------------------------------------
 
 # ----------------------------- Page config -----------------------------------
 st.set_page_config(
@@ -27,7 +33,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 # -----------------------------------------------------------------------------
-
 
 # ----------------------------- Header image ----------------------------------
 try:
@@ -46,7 +51,6 @@ st.markdown(
 st.caption("Please be patient, sometimes I take extra time to think.")
 # -----------------------------------------------------------------------------
 
-
 # ----------------------------- Helpers ---------------------------------------
 def load_developer_prompt() -> str:
     """Load system instructions from identity.txt if present; fallback to a default."""
@@ -60,7 +64,6 @@ def load_developer_prompt() -> str:
             "Be friendly, engaging, and provide clear, concise responses."
         )
 
-
 def human_size(n: int) -> str:
     for unit in ["B", "KB", "MB", "GB"]:
         if n < 1024.0:
@@ -69,13 +72,11 @@ def human_size(n: int) -> str:
     return f"{n:.1f} TB"
 # -----------------------------------------------------------------------------
 
-
 # ----------------------------- Gemini config ---------------------------------
 try:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     system_instructions = load_developer_prompt()
 
-    # Optional Google Search tool
     search_tool = types.Tool(google_search=types.GoogleSearch())
 
     generation_cfg = types.GenerateContentConfig(
@@ -94,15 +95,13 @@ except Exception as e:
     st.stop()
 # -----------------------------------------------------------------------------
 
-
 # ----------------------------- App state -------------------------------------
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("uploaded_files", [])
 st.session_state.setdefault("user_personality", None)
-st.session_state.setdefault("quiz_stage", "none")       # 'none'|'offered'|'in_progress'|'completed'
+st.session_state.setdefault("quiz_stage", "none")
 st.session_state.setdefault("quiz_progress", 0)
 # -----------------------------------------------------------------------------
-
 
 # ----------------------------- Sidebar ---------------------------------------
 with st.sidebar:
@@ -119,7 +118,6 @@ with st.sidebar:
                 "gemini-2.5-flash-lite",
             ],
             index=2,
-            help="Response Per Day Limits: Pro = 100, Flash = 250, Flash-lite = 1000)",
         )
         st.caption(f"Selected: **{selected_model}**")
 
@@ -133,118 +131,17 @@ with st.sidebar:
             )
 
     # Clear chat
-    if st.button("🧹 Clear chat", use_container_width=True, help="Reset chat context"):
+    if st.button("🧹 Clear chat", use_container_width=True):
         st.session_state.chat_history.clear()
         st.session_state.chat = client.chats.create(
             model=selected_model, config=generation_cfg
         )
         st.toast("Chat cleared.")
         st.rerun()
-
-    # ---- File Upload (Files API) ----
-    with st.expander(":material/attach_file: Files (PDF/TXT/DOCX)", expanded=True):
-        st.caption(
-            "Attach up to **5** files. They’ll be uploaded once and reused across turns. "
-            "Files are stored temporarily (~48 hours) in Google’s File store and count toward "
-            "your 20 GB storage cap until deleted (✖) or expired."
-        )
-        uploads = st.file_uploader(
-            "Upload files",
-            type=["pdf", "txt", "docx"],
-            accept_multiple_files=True,
-            label_visibility="collapsed",
-        )
-
-        def _upload_to_gemini(u):
-            mime = u.type or (mimetypes.guess_type(u.name)[0] or "application/octet-stream")
-            data = u.getvalue()
-            gfile = client.files.upload(
-                file=io.BytesIO(data),
-                config=types.UploadFileConfig(mime_type=mime),
-            )
-            return {
-                "name": u.name,
-                "size": len(data),
-                "mime": mime,
-                "file": gfile,
-            }
-
-        if uploads:
-            slots_left = max(0, 5 - len(st.session_state.uploaded_files))
-            newly_added = []
-            for u in uploads[:slots_left]:
-                already = any(
-                    (u.name == f["name"] and u.size == f["size"])
-                    for f in st.session_state.uploaded_files
-                )
-                if already:
-                    continue
-                try:
-                    meta = _upload_to_gemini(u)
-                    st.session_state.uploaded_files.append(meta)
-                    newly_added.append(meta["name"])
-                except Exception as e:
-                    st.error(f"File upload failed for **{u.name}**: {e}")
-            if newly_added:
-                st.toast(f"Uploaded: {', '.join(newly_added)}")
-
-        st.markdown("**Attached files**")
-        if st.session_state.uploaded_files:
-            for idx, meta in enumerate(st.session_state.uploaded_files):
-                left, right = st.columns([0.88, 0.12])
-                with left:
-                    st.write(
-                        f"• {meta['name']}"
-                        f"<small> {human_size(meta['size'])} · {meta['mime']}</small>",
-                        unsafe_allow_html=True,
-                    )
-                with right:
-                    if st.button("✖", key=f"remove_{idx}", help="Remove this file"):
-                        try:
-                            client.files.delete(name=meta["file"].name)
-                        except Exception:
-                            pass
-                        st.session_state.uploaded_files.pop(idx)
-                        st.rerun()
-            st.caption(f"{5 - len(st.session_state.uploaded_files)} slots remaining.")
-        else:
-            st.caption("No files attached.")
 # -----------------------------------------------------------------------------
-
-
-# ----------------------------- Chat replay container -------------------------
-with st.container():
-    for msg in st.session_state.chat_history:
-        avatar = "👤" if msg["role"] == "user" else ":material/robot_2:"
-        with st.chat_message(msg["role"], avatar=avatar):
-            st.markdown(msg["parts"])
-# -----------------------------------------------------------------------------
-
-
-# ----------------------------- Files API helper ------------------------------
-def _ensure_files_active(files, max_wait_s: float = 12.0):
-    """Poll the Files API for PROCESSING files until ACTIVE or timeout."""
-    deadline = time.time() + max_wait_s
-    any_processing = True
-    while any_processing and time.time() < deadline:
-        any_processing = False
-        for i, meta in enumerate(files):
-            fobj = meta["file"]
-            if getattr(fobj, "state", "") not in ("ACTIVE",):
-                any_processing = True
-                try:
-                    updated = client.files.get(name=fobj.name)
-                    files[i]["file"] = updated
-                except Exception:
-                    pass
-        if any_processing:
-            time.sleep(0.6)
-# -----------------------------------------------------------------------------
-
 
 # ----------------------------- ASU Event fetch/filter ------------------------
 ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
-
 
 def parse_ics(ics_text: str):
     events = []
@@ -280,7 +177,6 @@ def parse_ics(ics_text: str):
             current_event["LOCATION"] = line[len("LOCATION:") :].strip()
     return events
 
-
 def fetch_asu_events():
     try:
         r = requests.get(ICS_URL)
@@ -290,176 +186,23 @@ def fetch_asu_events():
         st.error(f"Failed to fetch ASU events: {ex}")
         return []
 
-
 if "asu_events" not in st.session_state:
     st.session_state.asu_events = fetch_asu_events()
 
-# --- Event filtering helpers ---
-def get_events_for_date(query: str, events: list):
-    """Parse a date from user input and return matching events."""
-    # Try parsing natural language date (e.g. "tomorrow", "Friday")
-    target_date = dateparser.parse(query, settings={"PREFER_DATES_FROM": "future"})
-    if target_date:
-        same_day_events = [e for e in events if e["start"].date() == target_date.date()]
-        return target_date, same_day_events
+# Optional: Natural language filter with dateparser
+date_filter = st.text_input("Enter a date or time frame (e.g. 'next Friday', 'September 20'):")
 
-    # Try parsing ranges like "Sept 20–25" or "next weekend"
-    range_dates = dateparser.search.search_dates(query, settings={"PREFER_DATES_FROM": "future"})
-    if range_dates and len(range_dates) >= 2:
-        start_date = range_dates[0][1]
-        end_date = range_dates[-1][1]
-        range_events = [e for e in events if start_date.date() <= e["start"].date() <= end_date.date()]
-        return (start_date, end_date), range_events
-
-    return None, []
-# -----------------------------------------------------------------------------
-
-
-# ----------------------------- Load personalities JSON -----------------------
-JSON_PATH = Path(__file__).with_name("16personalities.json")
-personalities: list = []
-try:
-    if JSON_PATH.exists():
-        personalities = json.loads(JSON_PATH.read_text(encoding="utf-8-sig"))
-        st.success(f"Loaded {len(personalities)} personality entries!")
-    else:
-        st.warning("⚠️ '16personalities.json' not found; continuing without personality data.")
-except json.JSONDecodeError as e:
-    st.error(f"Invalid JSON in {JSON_PATH.name}: {e}. Continuing without personality data.")
-    personalities = []
-except Exception as e:
-    st.error(f"Unexpected error loading {JSON_PATH.name}: {e}. Continuing without personality data.")
-    personalities = []
-# -----------------------------------------------------------------------------
-
-
-# ----------------------------- Personality helper ----------------------------
-def get_personality_text():
-    if st.session_state.get("user_personality"):
-        return f"User personality: {st.session_state['user_personality']}"
-    elif st.session_state.uploaded_files:
-        return "User uploaded a personality PDF; infer personality type from it."
-    else:
-        return "User personality unknown"
-
-
-def user_said_yes(text: str) -> bool:
-    t = text.strip().lower()
-    return any(p in t for p in ("yes", "yep", "yeah", "sure", "ok", "okay", "let's do it", "sounds good"))
-
-
-def user_said_no(text: str) -> bool:
-    t = text.strip().lower()
-    return any(p in t for p in ("no", "nope", "not now", "skip", "maybe later"))
-
-
-def seems_like_preference(text: str) -> bool:
-    t = text.strip().lower()
-    keywords = (
-        "book", "music", "art", "movie", "film", "concert", "sports", "game",
-        "coding", "tech", "volunteer", "career", "network", "dance", "outdoor",
-        "hiking", "writing", "poetry", "club", "workshop"
-    )
-    return any(k in t for k in keywords)
-# -----------------------------------------------------------------------------
-
-
-# ----------------------------- Chat input / send -----------------------------
-if user_prompt := st.chat_input("Message your bot…"):
-    st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_prompt)
-
-    personality_text = get_personality_text()
-
-    # Quiz state handling
-    if user_said_yes(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
-        st.session_state.quiz_stage = "in_progress"
-    elif user_said_no(user_prompt) and st.session_state.quiz_stage in ("none", "offered"):
-        st.session_state.quiz_stage = "completed"
-    elif seems_like_preference(user_prompt):
-        st.session_state.quiz_stage = "completed"
-    elif st.session_state.quiz_stage == "none":
-        st.session_state.quiz_stage = "offered"
-
-    # --- Event filtering ---
-    target, events_found = get_events_for_date(user_prompt, st.session_state.asu_events)
-    if target and events_found:
-        if isinstance(target, tuple):  # range
-            start, end = target
-            event_texts = [
-                f"- {e['title']} on {e['start'].strftime('%a %b %d %I:%M %p')} ({e['location']})"
-                for e in events_found[:10]
-            ]
-            events_summary = f"<h3>Events between {start.strftime('%b %d')} and {end.strftime('%b %d')}:</h3>" + "<br>".join(event_texts)
-        else:  # single date
-            event_texts = [
-                f"- {e['title']} at {e['start'].strftime('%I:%M %p')} ({e['location']})"
-                for e in events_found[:10]
-            ]
-            events_summary = f"<h3>Events on {target.strftime('%A, %b %d')}:</h3>" + "<br>".join(event_texts)
-    else:
-        # fallback to keyword + next week
-        filter_keyword = user_prompt.lower()
-        now = datetime.now()
-        one_week = now + timedelta(days=7)
+if date_filter and dateparser:
+    parsed_date = dateparser.parse(date_filter)
+    if parsed_date:
         filtered_events = [
             e for e in st.session_state.asu_events
-            if (filter_keyword in e["title"].lower() or filter_keyword in e.get("location", "").lower())
-            and now <= e["start"] <= one_week
+            if e["start"].date() == parsed_date.date()
         ]
-        if filtered_events:
-            event_texts = [
-                f"- {e['title']} ({e['start'].strftime('%a, %b %d %I:%M %p')} – {e['end'].strftime('%I:%M %p') if e.get('end') else 'N/A'}) at {e.get('location','No location')}"
-                for e in filtered_events[:10]
-            ]
-            events_summary = "<h3>Here are upcoming events in the next week:</h3>" + "<br>".join(event_texts)
-        else:
-            events_summary = "No events match your criteria."
-
-    # State directive for AI
-    state_directive = f"""
-APP_STATE:
-- quiz_stage: {st.session_state.quiz_stage}
-- quiz_progress: {st.session_state.quiz_progress}
-
-GUIDANCE FOR ASSISTANT:
-- If quiz_stage == 'offered' and the user accepted, start Quiz Question 1 now.
-- If quiz_stage == 'in_progress', ask exactly one next quiz question.
-- If quiz_stage == 'completed', never re-offer the quiz.
-- If the user provides clear preferences, skip the quiz and recommend events/clubs.
-"""
-
-    user_prompt_with_events = f"""
-User message: {user_prompt}
-
-Personality context: {personality_text}
-
-Personality database: {json.dumps(personalities)}
-
-Upcoming events: {events_summary}
-
-{state_directive}
-Instructions:
-1. Recommend events that best match the user's preferences and personality.
-2. If the user's personality is unknown and quiz_stage == 'none', invite a short quiz; otherwise follow APP_STATE.
-3. Be friendly and concise.
-"""
-
-    with st.chat_message("assistant", avatar=":material/robot_2:"):
-        try:
-            contents_to_send = [types.Part(text=user_prompt_with_events)]
-            if st.session_state.uploaded_files:
-                _ensure_files_active(st.session_state.uploaded_files)
-                for meta in st.session_state.uploaded_files:
-                    contents_to_send.append(meta["file"])  # pass file handles
-
-            response = st.session_state.chat.send_message(contents_to_send)
-            full_response = response.text if hasattr(response, "text") else str(response)
-
-            st.markdown(full_response)
-            st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
-
-        except Exception as e:
-            st.error(f"❌ Error from Gemini: {e}")
+    else:
+        st.warning(f"Could not parse '{date_filter}' into a date.")
+        filtered_events = st.session_state.asu_events
+else:
+    filtered_events = st.session_state.asu_events
+# -----------------------------------------------------------------------------
 
