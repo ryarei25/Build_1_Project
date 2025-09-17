@@ -49,6 +49,15 @@ body {
     color: #333;
     border-right: 2px solid #D8C5DD;
 }
+/* Sidebar input & select boxes */
+[data-testid="stSidebar"] .stSelectbox>div>div>div[role="listbox"],
+[data-testid="stSidebar"] .stTextInput>div>div>input,
+[data-testid="stSidebar"] .stTextArea>div>div>textarea {
+    background-color: #D9FEC9 !important;
+    color: #333 !important;
+    border: 2px solid #D8C5DD;
+    border-radius: 6px;
+}
 
 /* --- Top bar (menu) --- */
 header {
