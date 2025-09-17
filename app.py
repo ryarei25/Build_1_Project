@@ -48,7 +48,7 @@ body {
 }
 
 /* --- Title --- */
-h1.cute-title {
+h1.title {
     text-align: center;
     font-family: 'Comfortaa', cursive;
     font-size: 48px;
