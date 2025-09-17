@@ -1,229 +1,200 @@
 # BearFruit
 # Copyright (c) 2025 Arya Reiland
 
-# ----------------------------- Imports -----------------------------
+# ----------------------------- Imports (top-only) -----------------------------
 import io
 import time
 import json
-import requests
+import mimetypes
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+
+import requests
 import streamlit as st
 from PIL import Image
 
-# Google GenAI Models import
+# --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types
 
-# Optional: Natural language date parsing
+# --- Optional: Natural language date parsing ---------------------------
 try:
     import dateparser
 except ImportError:
     dateparser = None
     st.warning("⚠️ 'dateparser' not installed. Natural language date filters will be limited.")
+# -----------------------------------------------------------------------------
 
-# ----------------------------- Page config -----------------------------
+# ----------------------------- Page config -----------------------------------
 st.set_page_config(
     page_title="Bearfruit",
     layout="centered",
     initial_sidebar_state="expanded",
 )
+# -----------------------------------------------------------------------------
 
-# ----------------------------- CSS -----------------------------
+# --- CSS for theme and retro flair ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
+/* Body background */
 body {
     font-family: 'Comfortaa', cursive;
-    background: #CCE7FF;
-    color: #333;
+    background: linear-gradient(135deg, #CCE7FF, #FFCDEB);
+    color: #222;
     overflow-x: hidden;
 }
 
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background-color: #E5DBFF;
-    color: #333;
-}
-
-/* Top header bar */
-header {
-    background-color: #FFCDEB !important;
-}
-
-/* Pixelated Bearfruit Title */
+/* Pixelated Bearfruit title */
 .pixel-title {
     text-align: center;
-    font-size: 80px;
     font-family: 'Press Start 2P', cursive;
-    color: #CCE7FF; 
-    text-shadow:
-        2px 2px #000,
-        4px 4px #000,
-        6px 6px #000;
+    font-size: 72px;
+    color: #FFCDEB;
+    -webkit-text-stroke: 3px #000; /* black outline for readability */
     position: relative;
 }
 
-/* Static Twinkling Pixel Stars */
+/* Twinkling pixel stars */
 .star {
     position: absolute;
     width: 3px;
     height: 3px;
-    color: #FFE4A4;
-    animation: twinkle 2s infinite;
-}
-@keyframes twinkle {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
+    color: #EBE4A4; /* pastel yellow */
+    font-size: 20px;
+    animation: twinkle 2s infinite alternate;
 }
 
-/* Chat bubbles / retro window boxes */
+@keyframes twinkle {
+    0% {opacity: 0.2;}
+    50% {opacity: 1;}
+    100% {opacity: 0.2;}
+}
+
+/* Chat bubbles */
 .chat-bubble {
     max-width: 70%;
     padding: 12px 16px;
     margin: 8px 0;
-    border-radius: 0;
+    border-radius: 12px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+
+.user-bubble {
     background-color: #D9FEC9;
-    border: 2px solid #333;
-    box-shadow: 3px 3px #888888;
+    border: 2px solid #CCE7FF;
+    align-self: flex-end;
+}
+
+.bot-bubble {
+    background-color: #FFCDEB;
+    border: 2px solid #E5DBFF;
+    align-self: flex-start;
+}
+
+/* Chat container */
+.chat-container {
+    display: flex;
+    flex-direction: column;
 }
 
 /* Buttons */
 .stButton>button {
     background-color: #FFE4A4 !important;
-    color: #333 !important;
-    border: 2px solid #333 !important;
+    color: #222 !important;
+    border: 2px solid #FFCDEB !important;
     border-radius: 5px !important;
-    font-size: 14px;
-    padding: 8px 12px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 12px;
+    padding: 10px 16px;
     transition: all 0.2s ease-in-out;
 }
 
 .stButton>button:hover {
-    background-color: #D9FEC9 !important;
+    background-color: #CCE7FF !important;
     transform: scale(1.05);
 }
 
-/* Inputs, textareas, selectboxes */
-.stTextInput>div>div>input,
-.stTextArea>div>div>textarea,
-.stSelectbox>div>div>div {
-    background-color: #D9FEC9 !important;
-    border: 2px solid #333 !important;
-    border-radius: 0px;
-    color: #333;
-    padding: 6px;
+/* Inputs */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div {
+    background-color: #D9FEC9;
+    border: 2px solid #E5DBFF;
+    border-radius: 4px;
+    color: #222;
+    font-family: 'Comfortaa', cursive;
+    padding: 8px;
 }
 
-/* Scrollbars */
-::-webkit-scrollbar {
-    width: 10px;
+/* Sidebar */
+.css-1d391kg [data-testid="stSidebar"] {
+    background-color: #E5DBFF !important;
+    color: #222 !important;
 }
-::-webkit-scrollbar-thumb {
-    background: #E5DBFF;
-    border-radius: 5px;
+
+.css-1d391kg .css-1v3fvcr {
+    background-color: #D9FEC9 !important;
+    border: 2px solid #222 !important;
+    border-radius: 4px !important;
+    padding: 10px !important;
+    color: #222 !important;
+    font-family: 'Press Start 2P', cursive;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Header / Title -----------------------------
-# Pixel stars container
+# ----------------------------- Header Title and Stars ------------------------
 st.markdown("""
-<div style="position: relative; height: 120px;">
-    <div class="star" style="top: 10px; left: 20px;"></div>
-    <div class="star" style="top: 50px; left: 200px;"></div>
-    <div class="star" style="top: 30px; left: 400px;"></div>
-    <div class="star" style="top: 80px; left: 600px;"></div>
-    <div class="star" style="top: 20px; left: 700px;"></div>
+<div style="position: relative;">
     <h1 class="pixel-title">Bearfruit</h1>
 </div>
 <p style="text-align:center; font-family:'Comfortaa', cursive;">Your ASU Event Finder Assistant</p>
 <p style="text-align:center; font-family:'Comfortaa', cursive; font-size:12px;">Please be patient, sometimes I take extra time to think.</p>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Helpers -----------------------------
-def load_developer_prompt() -> str:
-    try:
-        with open("identity.txt", encoding="utf-8-sig") as f:
-            return f.read()
-    except FileNotFoundError:
-        st.warning("⚠️ 'identity.txt' not found. Using default prompt.")
-        return "You are a helpful assistant. Be friendly, engaging, and provide clear, concise responses."
-
-# ----------------------------- Gemini / Model setup -----------------------------
-try:
-    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-    system_instructions = load_developer_prompt()
-    search_tool = types.Tool(google_search=types.GoogleSearch())
-    generation_cfg = types.GenerateContentConfig(
-        system_instruction=system_instructions,
-        tools=[search_tool],
-        thinking_config=types.ThinkingConfig(thinking_budget=-1),
-        temperature=1.0,
-        max_output_tokens=2048,
-    )
-except Exception as e:
-    st.error(f"Error initializing Gemini client: {e}")
-    st.stop()
-
-# ----------------------------- Session state -----------------------------
+# ----------------------------- App State -------------------------------------
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("uploaded_files", [])
 st.session_state.setdefault("user_personality", None)
 st.session_state.setdefault("quiz_stage", "none")
 st.session_state.setdefault("quiz_progress", 0)
 
-# ----------------------------- Sidebar -----------------------------
+# ----------------------------- Sidebar ---------------------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
     st.markdown("### About: Briefly describe your bot here for users.")
-    # Model selection
-    with st.expander(":material/text_fields_alt: Model Selection", expanded=True):
-        selected_model = st.selectbox(
-            "Choose a model:",
-            options=[
-                "gemini-2.5-pro",
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
-            ],
-            index=2,
-        )
-        if "chat" not in st.session_state:
-            st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
-        elif getattr(st.session_state.chat, "model", None) != selected_model:
-            st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
-    # Clear chat
+    
+    # Example: model selection box
+    selected_model = st.selectbox(
+        "Choose a model:",
+        options=["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        index=2
+    )
+
     if st.button("🧹 Clear chat", use_container_width=True):
         st.session_state.chat_history.clear()
-        st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
         st.toast("Chat cleared.")
-        st.rerun()
 
-# ----------------------------- Chat Input / Display -----------------------------
+# ----------------------------- Chat input / send -----------------------------
 if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
-    # send to Gemini
-    try:
-        contents_to_send = [types.Part(text=user_prompt)]
-        response = st.session_state.chat.send_message(contents_to_send)
-        full_response = response.text if hasattr(response, "text") else str(response)
-        st.session_state.chat_history.append({"role": "assistant", "parts": full_response})
-        with st.chat_message("assistant", avatar=":material/robot_2:"):
-            st.markdown(full_response)
-    except Exception as e:
-        st.error(f"❌ Error from Gemini: {e}")
 
-# --- Display chat bubbles
+    # Example assistant response
+    response_text = "Hello! I'm Bearfruit, your event-finding assistant."
+    st.session_state.chat_history.append({"role": "assistant", "parts": response_text})
+    with st.chat_message("assistant", avatar=":material/robot_2:"):
+        st.markdown(response_text)
+
+# --- Display chat using styled bubbles ---
 for msg in st.session_state.chat_history:
     bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
-    st.markdown(f'<div class="chat-container"><div class="chat-bubble {bubble_class}">{msg["parts"]}</div></div>', unsafe_allow_html=True)
-
-
-
+    st.markdown(
+        f'<div class="chat-container"><div class="chat-bubble {bubble_class}">{msg["parts"]}</div></div>',
+        unsafe_allow_html=True
+    )
 
