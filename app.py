@@ -3,12 +3,17 @@
 
 # ----------------------------- Imports -----------------------------
 import io
+import time
 import json
+from pathlib import Path
+from datetime import datetime, timedelta
+
 import requests
 import streamlit as st
 from PIL import Image
-from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
+
+# --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types
 
@@ -44,7 +49,7 @@ h1.title { text-align: center; font-family: 'Comfortaa', cursive; font-size: 48p
 </style>
 """, unsafe_allow_html=True)
 
-# --- Title with multicolor symbols ---
+# --- Title ---
 st.markdown("""
 <h1 class="title">
   <span style="color:#FFE87F;">𖡼</span>
@@ -64,11 +69,14 @@ def load_developer_prompt() -> str:
         with open("identity.txt", encoding="utf-8-sig") as f:
             return f.read()
     except FileNotFoundError:
-        return "You are a helpful assistant. Be friendly, engaging, and provide clear, concise responses."
+        st.warning("⚠️ 'identity.txt' not found. Using default prompt.")
+        return (
+            "You are a helpful assistant. "
+            "Be friendly, engaging, and provide clear, concise responses."
+        )
 
 # ----------------------------- Gemini config --------------------------
-@st.cache_resource
-def init_gemini():
+try:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     system_instructions = load_developer_prompt()
     search_tool = types.Tool(google_search=types.GoogleSearch())
@@ -79,40 +87,47 @@ def init_gemini():
         temperature=1.0,
         max_output_tokens=2048,
     )
-    return client, generation_cfg
-
-client, generation_cfg = init_gemini()
+except Exception as e:
+    st.error(
+        "Error initialising the Gemini client. "
+        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets. "
+        f"Details: {e}"
+    )
+    st.stop()
 
 # ----------------------------- App state -----------------------------
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("asu_events", [])
-st.session_state.setdefault("event_cache", {})  # cache filtered events
+st.session_state.setdefault("user_personality", None)
 
 # ----------------------------- Sidebar -----------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
     selected_model = st.selectbox(
         "Choose a model:",
-        options=["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        options=["gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite"],
         index=2,
     )
     if "chat" not in st.session_state or getattr(st.session_state.chat, "model", None) != selected_model:
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
+    
     if st.button("🧹 Clear chat", use_container_width=True):
         st.session_state.chat_history.clear()
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
-        st.rerun()
+        st.toast("Chat cleared.")
+        st.experimental_rerun()
 
-# ----------------------------- Optional Filters -----------------------------
-time_frame = st.text_input("Enter a date or time frame (optional, e.g., 'next Friday', 'Sept 20')")
-vibe = st.selectbox("Select your vibe/mood (optional)", options=["Any", "Chill", "Energetic", "Creative", "Social", "Learning"])
-personality_type = st.text_input("Enter your 16-personality type (optional, e.g., INFP, ESTJ)")
-keywords = st.text_input("Enter keywords for your interests (optional, comma-separated, e.g., music, coding, hiking)")
+# ----------------------------- Filters -----------------------------
+st.markdown("### 🎯 Optional Filters")
+time_frame = st.text_input("Enter a date/time frame (optional)")
+vibe = st.selectbox("Select your vibe/mood", ["Any","Chill","Energetic","Creative","Social","Learning"])
+personality_type = st.text_input("Enter your 16-personality type (optional)")
+keywords = st.text_input("Enter keywords (comma-separated)")
 
-# ----------------------------- ASU Events Fetch -----------------------------
+# ----------------------------- Event Fetch & Cache -----------------------------
 ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
 
-@st.cache_data(ttl=3600)
+@st.cache_data(show_spinner=False)
 def fetch_asu_events():
     try:
         r = requests.get(ICS_URL)
@@ -120,7 +135,8 @@ def fetch_asu_events():
         events = []
         current_event = {}
         for line in r.text.splitlines():
-            if line.startswith("BEGIN:VEVENT"): current_event = {}
+            if line.startswith("BEGIN:VEVENT"):
+                current_event = {}
             elif line.startswith("END:VEVENT"):
                 if "SUMMARY" in current_event and "DTSTART" in current_event:
                     events.append({
@@ -129,16 +145,16 @@ def fetch_asu_events():
                         "end": current_event.get("DTEND"),
                         "location": current_event.get("LOCATION","No location")
                     })
-            elif line.startswith("SUMMARY:"): current_event["SUMMARY"] = line[len("SUMMARY:"):].strip()
+            elif line.startswith("SUMMARY:"): current_event["SUMMARY"]=line[len("SUMMARY:"):].strip()
             elif line.startswith("DTSTART"):
-                dt_str = line.split(":",1)[1].strip()
-                try: current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
-                except: current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
+                dt_str=line.split(":",1)[1].strip()
+                try: current_event["DTSTART"]=datetime.strptime(dt_str,"%Y%m%dT%H%M%S")
+                except: current_event["DTSTART"]=datetime.strptime(dt_str,"%Y%m%d")
             elif line.startswith("DTEND"):
-                dt_str = line.split(":",1)[1].strip()
-                try: current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
-                except: current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%d")
-            elif line.startswith("LOCATION:"): current_event["LOCATION"] = line[len("LOCATION:"):].strip()
+                dt_str=line.split(":",1)[1].strip()
+                try: current_event["DTEND"]=datetime.strptime(dt_str,"%Y%m%dT%H%M%S")
+                except: current_event["DTEND"]=datetime.strptime(dt_str,"%Y%m%d")
+            elif line.startswith("LOCATION:"): current_event["LOCATION"]=line[len("LOCATION:"):].strip()
         return events
     except Exception as ex:
         st.error(f"Failed to fetch ASU events: {ex}")
@@ -148,59 +164,61 @@ if not st.session_state.asu_events:
     st.session_state.asu_events = fetch_asu_events()
 
 # ----------------------------- Event Filtering -----------------------------
-def filter_events(user_msg, time_frame, vibe, personality_type, keywords):
-    cache_key = f"{user_msg}|{time_frame}|{vibe}|{personality_type}|{keywords}"
-    if cache_key in st.session_state.event_cache:
-        return st.session_state.event_cache[cache_key]
-
+@st.cache_data(show_spinner=False)
+def filter_events(events, user_msg, time_frame, vibe, personality_type, keywords):
     now = datetime.now()
-    start_dt, end_dt = now, now + timedelta(days=7)
+    start_dt, end_dt = now, now+timedelta(days=7)
     if time_frame:
         try:
-            dt = parse_date(time_frame, fuzzy=True)
-            start_dt, end_dt = dt, dt + timedelta(days=1)
+            dt=parse_date(time_frame,fuzzy=True)
+            start_dt, end_dt = dt, dt+timedelta(days=1)
         except: pass
 
-    filtered = []
-    for e in st.session_state.asu_events:
-        title = e["title"].lower()
-        loc = e["location"].lower()
-        if not (start_dt <= e["start"] <= end_dt): continue
-        if user_msg.lower() in title or user_msg.lower() in loc:
-            filtered.append(e)
-        elif keywords:
-            kw_matches = any(kw.strip().lower() in title+loc for kw in keywords.split(","))
-            if kw_matches: filtered.append(e)
-    st.session_state.event_cache[cache_key] = filtered[:10]
-    return st.session_state.event_cache[cache_key]
+    filtered=[]
+    for e in events:
+        title=e["title"].lower()
+        loc=e.get("location","").lower()
+        if start_dt <= e["start"] <= end_dt:
+            if user_msg.lower() in title or user_msg.lower() in loc:
+                filtered.append(e)
+            elif keywords:
+                if any(kw.strip().lower() in title+loc for kw in keywords.split(",")):
+                    filtered.append(e)
+    return filtered[:10]
 
-# ----------------------------- Chat replay -------------------------
+# ----------------------------- Chat -----------------------------
 with st.container():
     for msg in st.session_state.chat_history:
-        avatar = "🍓" if msg["role"]=="user" else "🐻"
+        avatar="🍓" if msg["role"]=="user" else "🐻"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["parts"])
 
-# ----------------------------- Chat input / send -----------------------------
 if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    filtered_events = filter_events(user_prompt, time_frame, vibe, personality_type, keywords)
-    events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" for e in filtered_events]) or "No matching events found."
+    filtered_events = filter_events(
+        st.session_state.asu_events, user_prompt, time_frame, vibe, personality_type, keywords
+    )
+
+    events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+                                for e in filtered_events]) or "No matching events found."
 
     user_prompt_with_context = f"""
 User message: {user_prompt}
-Personality: {personality_type or 'unknown'}
+Personality: {personality_type or st.session_state.get('user_personality','unknown')}
 Vibe: {vibe}
 Keywords: {keywords}
-Upcoming events (filtered):
+Upcoming events:
 {events_summary}
+Instructions:
+1. Recommend events that best match user's personality, vibe, and preferences.
+2. Only suggest from filtered events.
 """
 
     try:
         response = st.session_state.chat.send_message(user_prompt_with_context)
-        bot_reply = response.last
+        bot_reply = response.output_text  # updated Gemini API
     except Exception as e:
         bot_reply = f"⚠️ Error with Gemini chat: {e}"
 
