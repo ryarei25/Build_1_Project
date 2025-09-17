@@ -156,11 +156,7 @@ select, option {
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Header Image & Title ------------------------
-st.markdown("""
-<div style="text-align:center; margin-bottom:20px;">
-    <img src="Bot.png" alt="Bearfruit Header" style="max-width: 80%; height: auto; border-radius: 12px;">
-</div>
+# ----------------------------- Title ------------------------
 
 <div class="pixel-title-container">
     <h1 class="pixel-title">Bearfruit</h1>
