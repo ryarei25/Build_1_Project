@@ -18,7 +18,8 @@ from google.genai import types
 
 # ----------------------------- Page config ------------------------
 st.set_page_config(
-    page_title="Bearfruit",
+    page_title="BearFruit",
+    page_icon="🍓",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -30,70 +31,37 @@ st.image(header_img, use_container_width=True, output_format="PNG")
 # ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 
-/* --- Background & general body --- */
 body {
     font-family: 'Comfortaa', cursive;
-    background-color: #2e2e2e;  /* dark grey background */
+    background: linear-gradient(135deg, #FFB6C1, #A0E7E5);
     color: #333;
     overflow-x: hidden;
 }
 
 /* --- Sidebar --- */
 [data-testid="stSidebar"] {
-    background-color: #E5DBFF !important;  /* lavender */
+    background-color: #FFF0F5 !important;  
     color: #333;
-    border-right: 2px solid #D8C5DD;
+    border-right: 2px solid #FFD6E8;
 }
 
-/* --- Top bar (menu) --- */
-header {
-    background-color: #FFCDEB !important;  /* pink */
-}
-
-/* --- Pixelated Bearfruit Title --- */
-.pixel-title-container {
-    position: relative;
+/* --- Title --- */
+h1.cute-title {
     text-align: center;
-    margin-bottom: 10px;
+    font-family: 'Comfortaa', cursive;
+    font-size: 48px;
+    color: #FF6B81;
+    text-shadow: 2px 2px #FFD3E0;
+    margin-bottom: 0;
 }
-.pixel-title {
-    font-family: 'Press Start 2P', cursive;
-    font-size: 80px;
-    color: #FFF;  /* inside color */
-    text-shadow:
-        -2px -2px 0 #000,
-        2px -2px 0 #000,
-        -2px 2px 0 #000,
-        2px 2px 0 #000,
-        4px 4px #EBC7FB,
-        6px 6px #FFE4A4,
-        8px 8px #D9FEC9;
-    display: inline-block;
-    z-index: 2;
-}
-
-/* --- Pixel stars --- */
-.star {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    background-color: #FFE4A4;
-    animation: twinkle 2s infinite;
-}
-@keyframes twinkle {
-    0%,100% {opacity:0.2;}
-    50% {opacity:1;}
-}
-
-/* --- Subtitle --- */
 .subtitle {
     text-align:center;
     font-family:'Comfortaa', cursive;
     font-size:18px;
     margin-bottom: 20px;
-    color: #FFF;
+    color: #444;
 }
 
 /* --- Chat bubbles --- */
@@ -101,88 +69,62 @@ header {
     max-width: 70%;
     padding: 12px 16px;
     margin: 8px 0;
-    border-radius: 4px;
+    border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    border: 2px solid rgba(216,197,221,0.7);
-    box-shadow: 2px 2px 0 #D8C5DD;
+    border: 2px solid;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
 }
-
 .user-bubble {
-    background-color: rgba(217,254,201,0.6); /* semi-transparent light green */
-    border-color: rgba(217,254,201,0.8);
+    background-color: #FFFAF0;
+    border-color: #FFB6C1;
     align-self: flex-end;
 }
-
 .bot-bubble {
-    background-color: rgba(217,254,201,0.6); /* same semi-transparent light green */
-    border-color: rgba(217,254,201,0.8);
+    background-color: #E0F7FA;
+    border-color: #A0E7E5;
     align-self: flex-start;
 }
-
-/* --- Chat container --- */
 .chat-container {
     display: flex;
     flex-direction: column;
 }
 
-/* --- Inputs & selectbox --- */
+/* --- Inputs --- */
 .stTextInput>div>div>input,
 .stTextArea>div>div>textarea,
 .stSelectbox>div>div>div[role="listbox"],
 select, option {
-    background-color: rgba(217,254,201,0.6) !important;  /* light green vibe dropdown */
-    border: 2px solid rgba(216,197,221,0.7);
-    border-radius: 6px;
+    background-color: #fff0f5 !important;  
+    border: 2px solid #FFB6C1;
+    border-radius: 12px;
     color: #333;
     font-family: 'Comfortaa', cursive;
-    padding: 6px;
-}
-
-/* --- Selectboxes & dropdown labels --- */
-.stSelectbox>label {
-    color: #FFF !important;  /* make "Choose a model" label white */
+    padding: 8px;
 }
 
 /* --- Buttons --- */
 .stButton>button {
-    background-color: #FFE4A4 !important;
+    background-color: #FFFA87 !important;
     color: #333 !important;
-    border: 2px solid #EBC7FB !important;
-    border-radius: 4px !important;
+    border: 2px solid #FFB6C1 !important;
+    border-radius: 15px !important;
     font-size: 14px;
-    padding: 10px 16px;
+    padding: 12px 20px;
     transition: all 0.2s ease-in-out;
 }
 .stButton>button:hover {
-    background-color: #FFCDEB !important;
+    background-color: #A0E7E5 !important;
     transform: scale(1.05);
 }
 </style>
 """, unsafe_allow_html=True)
 
-
-
-# --- Title 
-
+# --- Title ---
 st.markdown("""
-
-<div class="pixel-title-container">
-    <h1 class="pixel-title">Bearfruit</h1>
-</div>
-<script>
-const container = document.querySelector('.pixel-title-container');
-for(let i=0;i<60;i++){
-    const star = document.createElement('div');
-    star.classList.add('star');
-    star.style.top = Math.random()*60 + 'px';
-    star.style.left = Math.random()*container.offsetWidth + 'px';
-    container.appendChild(star);
-}
-</script>
-<p class="subtitle">Your ASU Event Finder Assistant</p>
+<h1 class="cute-title">🍓 BearFruit</h1>
+<p class="subtitle">Your cutesy Y2K pixel assistant ✨</p>
 """, unsafe_allow_html=True)
-
 
 # ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
@@ -268,7 +210,7 @@ keywords = st.text_input("Enter keywords for your interests (optional, comma-sep
 # ----------------------------- Chat replay container -------------------------
 with st.container():
     for msg in st.session_state.chat_history:
-        avatar = "👤" if msg["role"] == "user" else ":material/robot_2:"
+        avatar = "👤" if msg["role"] == "user" else "🍓"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["parts"])
 
