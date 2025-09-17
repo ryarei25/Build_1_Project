@@ -32,118 +32,137 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 # -----------------------------------------------------------------------------
-# CSS
-
+# ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
 
-/* ----------------- Palette ----------------- */
-:root {
-    --light-blue: #c6d7e6;
-    --light-pink: #ffb9b7;
-    --pastel-green: #d1ddb4;
-    --pastel-yellow: #fff1a7;
-    --lavender: #d8c5dd;
-    --text-dark: #333;
-}
-
-/* ----------------- Streamlit Containers ----------------- */
-[data-testid="stAppViewContainer"] {
-    background-color: var(--light-blue) !important;
-}
-
-[data-testid="stSidebar"] {
-    background-color: var(--lavender) !important;
-    color: var(--text-dark);
-}
-
-[data-testid="stHeader"] {
-    background-color: var(--pastel-yellow) !important;
-}
-
-/* ----------------- Pixelated Title ----------------- */
-.pixel-title {
-    text-align: center;
-    font-size: 60px;
+/* --- Background & general body --- */
+body {
     font-family: 'Comfortaa', cursive;
-    color: #000;
-    text-shadow:
-        2px 2px var(--light-pink),
-        4px 4px #000,
-        6px 6px var(--pastel-green);
+    background: linear-gradient(135deg, #C6D7E6, #FFB9B7);
+    color: #333;
+    overflow-x: hidden;
 }
 
-/* ----------------- Chat Bubbles ----------------- */
+/* --- Sidebar --- */
+[data-testid="stSidebar"] {
+    background-color: #D1DDB4 !important;
+    color: #333;
+    border-right: 2px solid #D8C5DD;
+}
+
+/* --- Top bar (menu) --- */
+header {
+    background-color: #CCE7FF !important;
+}
+
+/* --- Pixelated Bearfruit Title --- */
+.pixel-title-container {
+    position: relative;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.pixel-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 48px;
+    color: #000; /* black inside */
+    text-shadow:
+        2px 2px #EBB7FB,
+        4px 4px #FFE4A4,
+        6px 6px #D1DDB4;
+    display: inline-block;
+    z-index: 2;
+}
+
+/* --- Pixel stars --- */
+.star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background-color: #FFE4A4;
+    animation: twinkle 2s infinite;
+}
+@keyframes twinkle {
+    0%,100% {opacity:0.2;}
+    50% {opacity:1;}
+}
+
+/* --- Chat bubbles --- */
 .chat-bubble {
     max-width: 70%;
     padding: 12px 16px;
     margin: 8px 0;
-    border-radius: 20px;
+    border-radius: 4px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    box-shadow: 0 0 15px rgba(255,241,167,0.7); /* pastel yellow halo */
+    border: 2px solid;
+    box-shadow: 2px 2px 0 #D8C5DD;
 }
 
 .user-bubble {
-    background-color: var(--light-blue);
-    border: 2px solid var(--pastel-green);
+    background-color: #CCE7FF;
+    border-color: #C6D7E6;
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: var(--light-pink);
-    border: 2px solid var(--ffb9b7);
+    background-color: #FFB9B7;
+    border-color: #D8C5DD;
     align-self: flex-start;
 }
 
-/* ----------------- Chat container ----------------- */
+/* --- Chat container --- */
 .chat-container {
     display: flex;
     flex-direction: column;
 }
 
-/* ----------------- Buttons ----------------- */
+/* --- Inputs & selectbox --- */
+.stTextInput>div>div>input,
+.stTextArea>div>div>textarea,
+.stSelectbox>div>div>div[role="listbox"] {
+    background-color: #FFF1A7 !important;
+    border: 2px solid #D8C5DD;
+    border-radius: 6px;
+    color: #333;
+    font-family: 'Comfortaa', cursive;
+    padding: 6px;
+}
+
+/* --- Buttons --- */
 .stButton>button {
-    background-color: var(--pastel-yellow) !important;
-    color: var(--text-dark) !important;
-    border: 2px solid var(--light-pink) !important;
-    border-radius: 15px !important;
+    background-color: #D8C5DD !important;
+    color: #333 !important;
+    border: 2px solid #C6D7E6 !important;
+    border-radius: 4px !important;
     font-size: 14px;
-    padding: 12px 20px;
+    padding: 10px 16px;
     transition: all 0.2s ease-in-out;
 }
-
 .stButton>button:hover {
-    background-color: var(--light-blue) !important;
+    background-color: #CCE7FF !important;
     transform: scale(1.05);
 }
-
-/* ----------------- Inputs & Selects ----------------- */
-.stTextInput>div>div>input, 
-.stTextArea>div>div>textarea,
-.stSelectbox>div>div>div {
-    background-color: var(--light-pink);
-    border: 2px solid var(--light-pink);
-    border-radius: 12px;
-    color: var(--text-dark);
-    font-family: 'Comfortaa', cursive;
-    padding: 8px;
-}
-
-/* ----------------- Twinkling Pixel Stars ----------------- */
-.star {
-    position: absolute;
-    font-size: 16px;
-    color: var(--pastel-yellow);
-    animation: twinkle 2s infinite;
-}
-
-@keyframes twinkle {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-}
 </style>
+""", unsafe_allow_html=True)
+
+# ----------------------------- Star field HTML ------------------------
+st.markdown("""
+<div class="pixel-title-container">
+    <h1 class="pixel-title">Bearfruit</h1>
+</div>
+<script>
+const container = document.querySelector('.pixel-title-container');
+for(let i=0;i<60;i++){
+    const star = document.createElement('div');
+    star.classList.add('star');
+    star.style.top = Math.random()*50 + 'px';
+    star.style.left = Math.random()*container.offsetWidth + 'px';
+    container.appendChild(star);
+}
+</script>
+<p style="text-align:center; font-family:'Comfortaa', cursive;">Your ASU Event Finder Assistant</p>
 """, unsafe_allow_html=True)
 
 
