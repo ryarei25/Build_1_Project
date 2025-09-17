@@ -1,6 +1,5 @@
 # BearFruit
 # Copyright (c) 2025 Arya Reiland
-# "This code uses portions of code developed by Prof. Ronald A. Beghetto for a course taught at Arizona State University."
 
 # ----------------------------- Imports (top-only) -----------------------------
 import io
@@ -22,7 +21,7 @@ from google.genai import types
 
 # ----------------------------- Page config -----------------------------------
 st.set_page_config(
-    page_title="BearFruit",
+    page_title="My Bot",
     layout="centered",
     initial_sidebar_state="expanded",
 )
@@ -43,6 +42,7 @@ st.markdown(
     "<h1 style='text-align: center;'>Bearfruit, Your ASU Event Finder Assistant</h1>",
     unsafe_allow_html=True,
 )
+st.caption("Please be patient, sometimes I take extra time to think.")
 # -----------------------------------------------------------------------------
 
 
@@ -107,7 +107,7 @@ st.session_state.setdefault("quiz_progress", 0)         # index of current quiz 
 # ----------------------------- Sidebar ---------------------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
-    st.markdown("Briefly describe your bot here for users.")
+    st.markdown("### About: Briefly describe your bot here for users.")
 
     # Model selection
     with st.expander(":material/text_fields_alt: Model Selection", expanded=True):
@@ -340,9 +340,7 @@ if filtered_events:
         end_str = e["end"].strftime("%I:%M %p") if e["end"] else "N/A"
         location = e["location"] or "No location specified"
         event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
-    events_summary = "Upcoming ASU events matching your preferences:
-" + "
-".join(event_texts)
+    events_summary = "<h3>Upcoming ASU events matching your preferences:</h3>" + "<br>".join(event_texts)
 else:
     events_summary = "No events match your filter."
 # -----------------------------------------------------------------------------
@@ -430,12 +428,7 @@ if user_prompt := st.chat_input("Message your bot…"):
             end_str = e.get("end").strftime("%I:%M %p") if e.get("end") else "N/A"
             location = e.get("location", "No location specified")
             event_texts.append(f"- {e['title']} ({start_str} – {end_str}) at {location}")
-        events_summary = (
-            "Here are upcoming events based on your preferences and next week timing:
-"
-            + "
-".join(event_texts)
-        )
+        events_summary = "<h3>Here are upcoming events based on your preferences and next week timing:</h3>" + "<br>".join(event_texts)
     else:
         events_summary = "No events match your criteria for the next week."
 
@@ -486,4 +479,3 @@ Instructions:
         except Exception as e:
             st.error(f"❌ Error from Gemini: {e}")
 # -----------------------------------------------------------------------------
-
