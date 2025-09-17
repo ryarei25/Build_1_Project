@@ -23,6 +23,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ----------------------------- Header Image ------------------------
+try:
+    header_img = Image.open("header_image.png")  # replace with your file path
+    st.image(header_img, use_column_width=True)
+except FileNotFoundError:
+    st.warning("Header image not found. Place 'header_image.png' in the app folder.")
+
 # ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
@@ -258,4 +265,3 @@ if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_prompt)
-
