@@ -91,13 +91,13 @@ except Exception as e:
 # ----------------------------- App state -----------------------------
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("asu_events", [])
-st.session_state.setdefault("last_user_prompt", "")
 st.session_state.setdefault("filters", {
     "time_frame": "",
     "vibe": "Any",
     "personality_type": "",
     "keywords": ""
 })
+st.session_state.setdefault("last_user_prompt", "")
 st.session_state.setdefault("last_key", "")
 
 # ----------------------------- Sidebar -----------------------------
@@ -153,9 +153,14 @@ def fetch_asu_events():
                     })
             elif line.startswith("SUMMARY:"): current_event["SUMMARY"]=line[len("SUMMARY:"):].strip()
             elif line.startswith("DTSTART"):
-                dt_str=line.split(":",1)[1].strip()
-                try: current_event["DTSTART"]=datetime.strptime(dt_str,"%Y%m%dT%H%M%S")
-                except: current_event["DTSTART"]=datetime.strptime(dt_str,"%Y%m%d")
+                dt_str = line.split(":",1)[1].strip()
+                try:
+                    if dt_str.endswith("Z"):
+                        current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%SZ")
+                    else:
+                        current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+                except:
+                    current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
             elif line.startswith("LOCATION:"): current_event["LOCATION"]=line[len("LOCATION:"):].strip()
         return events
     except Exception as ex:
@@ -166,7 +171,7 @@ if not st.session_state.asu_events:
     st.session_state.asu_events = fetch_asu_events()
 
 # ----------------------------- Event Filtering -----------------------------
-def filter_events(events, user_msg, time_frame, vibe, personality_type, keywords):
+def filter_events(events, time_frame):
     now = datetime.now()
     start_dt, end_dt = now, now + timedelta(days=7)
 
@@ -199,18 +204,10 @@ def filter_events(events, user_msg, time_frame, vibe, personality_type, keywords
     filtered = []
     for e in events:
         event_start = e["start"]
-        # Convert date-only events to datetime at midnight
         if not isinstance(event_start, datetime):
             event_start = datetime.combine(event_start, datetime.min.time())
-
-        if not (start_dt <= event_start <= end_dt):
-            continue
-
-        # Basic keyword match (optional)
-        title_loc = (e["title"] + " " + e.get("location","")).lower()
-        if not keywords or any(kw.strip().lower() in title_loc for kw in keywords.split(",")):
+        if start_dt <= event_start <= end_dt:
             filtered.append(e)
-
     return filtered[:10]
 
 # ----------------------------- Bot Reply -----------------------------
@@ -218,11 +215,7 @@ def generate_bot_reply(user_prompt):
     f = st.session_state.filters
     filtered_events = filter_events(
         st.session_state.asu_events,
-        user_prompt,
-        f["time_frame"],
-        f["vibe"],
-        f["personality_type"],
-        f["keywords"]
+        f["time_frame"]
     )
 
     if filtered_events:
@@ -230,7 +223,6 @@ def generate_bot_reply(user_prompt):
     else:
         events_summary = "No matching events found based on your preferences."
 
-    # You can also send this to Gemini if needed
     return f"Here are events matching your preferences:\n{events_summary}"
 
 # ----------------------------- Chat -----------------------------
@@ -245,7 +237,6 @@ if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.last_user_prompt = user_prompt
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    # Unique key for current prompt + filters
     current_key = (
         st.session_state.last_user_prompt
         + "|"
@@ -268,4 +259,5 @@ if user_prompt := st.chat_input("Message your bot…"):
         st.session_state.last_key = current_key
 
         with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
 
