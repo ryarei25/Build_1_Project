@@ -33,44 +33,52 @@ st.set_page_config(
 )
 # -----------------------------------------------------------------------------
 
-# --- CSS + Pixel Title + Twinkling Stars ---
+# --- Complete CSS for app.py ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 
-/* Main app background and sidebar */
-[data-testid="stAppViewContainer"], 
-[data-testid="stSidebar"] {
-    background: linear-gradient(135deg, #A0E7E5, #BEE3F8);
+/* --- Palette Colors ---
+#c6d7e6 (light blue)
+#ffb9b7 (light pink)
+#d1ddb4 (light green)
+#fff1a7 (pastel yellow)
+#d8c5dd (lavender)
+*/
+
+/* --- Body / Background / General --- */
+body {
+    font-family: 'Comfortaa', cursive;
+    background-color: #c6d7e6; /* main light blue background */
+    color: #333; /* readable dark text */
+    overflow-x: hidden;
 }
 
-/* Pixelated Bearfruit title */
+/* --- Sidebar Styling --- */
+[data-testid="stSidebar"] {
+    background-color: #d8c5dd !important; /* pastel lavender sidebar */
+    color: #000 !important;
+}
+
+/* --- Top bar / header area --- */
+header, [data-testid="stHeader"] {
+    background-color: #ffb9b7 !important; /* light pink top bar */
+    color: #000 !important;
+}
+
+/* --- Pixelated title --- */
 .pixel-title {
     text-align: center;
     font-size: 60px;
     font-family: 'Comfortaa', cursive;
-    color: #000;
+    color: #000; /* black fill */
     text-shadow:
         2px 2px #fff,
-        4px 4px #FFB6C1,
+        4px 4px #ffb9b7,
         6px 6px #000;
-    position: relative;
-    z-index: 2;
 }
 
-/* Twinkling stars using ✨ */
-.star {
-    position: absolute;
-    font-size: 20px;
-    color: #FFF176; /* pastel yellow */
-    animation: twinkle 2s infinite;
-}
-@keyframes twinkle {
-    0%, 100% { opacity: 0.2; }
-    50% { opacity: 1; }
-}
-
-/* Chat bubbles */
+/* --- Chat bubbles --- */
 .chat-bubble {
     max-width: 70%;
     padding: 12px 16px;
@@ -78,63 +86,82 @@ st.markdown("""
     border-radius: 20px;
     font-family: 'Comfortaa', cursive;
     font-size: 14px;
-    box-shadow: 0 0 15px rgba(255,182,193,0.7);
+    box-shadow: 0 0 15px rgba(255,185,183,0.7); /* pink halo */
 }
 
 .user-bubble {
-    background-color: #E0F7FA;
-    border: 2px solid #A0E7E5;
+    background-color: #c6d7e6; /* light blue */
+    border: 2px solid #d1ddb4; /* green accent */
     align-self: flex-end;
 }
 
 .bot-bubble {
-    background-color: #FFF0F5;
-    border: 2px solid #FFB6C1;
+    background-color: #ffb9b7; /* light pink */
+    border: 2px solid #d8c5dd; /* lavender accent */
     align-self: flex-start;
 }
 
-/* Buttons */
+/* --- Chat container --- */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Buttons --- */
 .stButton>button {
-    background-color: #FFFA87 !important;
-    color: #333 !important;
-    border: 2px solid #FFB6C1 !important;
+    background-color: #fff1a7 !important; /* pastel yellow */
+    color: #000 !important;
+    border: 2px solid #d8c5dd !important;
     border-radius: 15px !important;
     font-size: 14px;
     padding: 12px 20px;
     transition: all 0.2s ease-in-out;
 }
+
 .stButton>button:hover {
-    background-color: #A0E7E5 !important;
+    background-color: #d1ddb4 !important; /* light green hover */
     transform: scale(1.05);
 }
 
-/* Inputs & select boxes (vibe dropdown included) */
-.stTextInput>div>div>input, 
-.stTextArea>div>div>textarea, 
-.stSelectbox>div>div>div>select {
-    background-color: #fff0f5 !important;
-    border: 2px solid #FFB6C1 !important;
-    border-radius: 12px !important;
-    color: #333 !important;
+/* --- Text Inputs / Textareas --- */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    background-color: #d8c5dd; /* pastel lavender */
+    border: 2px solid #d1ddb4; /* green accent */
+    border-radius: 12px;
+    color: #000;
     font-family: 'Comfortaa', cursive;
     padding: 8px;
+}
+
+/* --- Vibe Dropdown / Selectbox --- */
+.stSelectbox>div>div>div {
+    background-color: #d8c5dd !important; /* lavender */
+    border: 2px solid #d1ddb4 !important; /* green border */
+    border-radius: 12px !important;
+    color: #000 !important; /* black text */
+    font-family: 'Comfortaa', cursive !important;
+    padding: 6px 8px !important;
+}
+.stSelectbox>div>div>div:hover {
+    border-color: #ffb9b7 !important; /* pink hover accent */
+}
+
+/* --- Twinkling Pixel Stars ✨ --- */
+.star {
+    position: absolute;
+    font-size: 16px;
+    color: #fff1a7; /* pastel yellow */
+    animation: twinkle 2s infinite;
+}
+
+/* Twinkle Animation */
+@keyframes twinkle {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --- HTML for title and stars ---
-st.markdown("""
-<div style="position: relative; height: 120px;">
-    <h1 class="pixel-title">Bearfruit</h1>
-    <!-- Twinkling stars -->
-    <div class="star" style="top:10px; left:50px;">✨</div>
-    <div class="star" style="top:30px; left:200px;">✨</div>
-    <div class="star" style="top:60px; left:350px;">✨</div>
-    <div class="star" style="top:80px; left:100px;">✨</div>
-    <div class="star" style="top:20px; left:400px;">✨</div>
-</div>
-<p style="text-align:center; font-family:'Comfortaa', cursive; font-size:18px;">Your ASU Event Finder Assistant</p>
-""", unsafe_allow_html=True)
 
 
 
