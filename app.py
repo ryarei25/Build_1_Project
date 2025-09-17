@@ -1,8 +1,9 @@
 # BearFruit
 # Copyright (c) 2025 Arya Reiland
 
-# ----------------------------- Imports -----------------------------
-import io, time, json
+import io
+import time
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
 import requests
@@ -22,11 +23,8 @@ st.set_page_config(
 )
 
 # --- Header Image ---
-try:
-    header_img = Image.open("Bot.png")
-    st.image(header_img, use_container_width=True, output_format="PNG")
-except FileNotFoundError:
-    st.warning("Bot.png not found. Header image disabled.")
+header_img = Image.open("Bot.png")
+st.image(header_img, use_container_width=True, output_format="PNG")
 
 # --- CSS & Theme ---
 st.markdown("""
@@ -74,19 +72,32 @@ def load_developer_prompt() -> str:
 try:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     system_instructions = load_developer_prompt()
+    search_tool = types.Tool(google_search=types.GoogleSearch())
     generation_cfg = types.GenerateContentConfig(
         system_instruction=system_instructions,
+        tools=[search_tool],
+        thinking_config=types.ThinkingConfig(thinking_budget=-1),
         temperature=1.0,
-        max_output_tokens=512,  # shorter output for safety
+        max_output_tokens=2048,
     )
 except Exception as e:
-    st.error(f"Error initialising Gemini client: {e}")
+    st.error(
+        "Error initialising the Gemini client. "
+        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets. "
+        f"Details: {e}"
+    )
     st.stop()
 
 # ----------------------------- App state -----------------------------
 st.session_state.setdefault("chat_history", [])
 st.session_state.setdefault("asu_events", [])
-st.session_state.setdefault("user_personality", None)
+st.session_state.setdefault("last_user_prompt", "")
+st.session_state.setdefault("filters", {
+    "time_frame": "",
+    "vibe": "Any",
+    "personality_type": "",
+    "keywords": ""
+})
 
 # ----------------------------- Sidebar -----------------------------
 with st.sidebar:
@@ -107,10 +118,17 @@ with st.sidebar:
 
 # ----------------------------- Filters -----------------------------
 st.markdown("### 🎯 Optional Filters")
-time_frame = st.text_input("Enter a date/time frame (optional)")
-vibe = st.selectbox("Select your vibe/mood", ["Any","Chill","Energetic","Creative","Social","Learning"])
-personality_type = st.text_input("Enter your 16-personality type (optional)")
-keywords = st.text_input("Enter keywords (comma-separated)")
+time_frame = st.text_input("Enter a date/time frame (optional)", value=st.session_state.filters["time_frame"])
+vibe = st.selectbox("Select your vibe/mood", ["Any","Chill","Energetic","Creative","Social","Learning"], index=["Any","Chill","Energetic","Creative","Social","Learning"].index(st.session_state.filters.get("vibe","Any")))
+personality_type = st.text_input("Enter your 16-personality type (optional)", value=st.session_state.filters.get("personality_type",""))
+keywords = st.text_input("Enter keywords (comma-separated)", value=st.session_state.filters.get("keywords",""))
+
+st.session_state.filters.update({
+    "time_frame": time_frame,
+    "vibe": vibe,
+    "personality_type": personality_type,
+    "keywords": keywords
+})
 
 # ----------------------------- Event Fetch & Cache -----------------------------
 ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
@@ -152,54 +170,71 @@ if not st.session_state.asu_events:
     st.session_state.asu_events = fetch_asu_events()
 
 # ----------------------------- Event Filtering -----------------------------
-@st.cache_data(show_spinner=False)
 def filter_events(events, user_msg, time_frame, vibe, personality_type, keywords):
     now = datetime.now()
-    start_dt, end_dt = now, now+timedelta(days=7)
-    if time_frame:
-        try:
-            dt=parse_date(time_frame,fuzzy=True)
-            start_dt, end_dt = dt, dt+timedelta(days=1)
-        except: pass
+    start_dt, end_dt = now, now + timedelta(days=7)
 
-    filtered=[]
+    tf = time_frame.strip().lower() if time_frame else ""
+    if tf == "today":
+        start_dt, end_dt = now.replace(hour=0, minute=0, second=0), now.replace(hour=23, minute=59, second=59)
+    elif tf == "tomorrow":
+        tomorrow = now + timedelta(days=1)
+        start_dt, end_dt = tomorrow.replace(hour=0, minute=0, second=0), tomorrow.replace(hour=23, minute=59, second=59)
+    elif tf == "next week":
+        start_dt = now + timedelta(days=(7 - now.weekday()))
+        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    elif tf == "this month":
+        start_dt = now.replace(day=1, hour=0, minute=0, second=0)
+        if now.month == 12:
+            end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
+        else:
+            next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
+            end_dt = next_month - timedelta(seconds=1)
+    else:
+        if time_frame:
+            try:
+                dt = parse_date(time_frame, fuzzy=True)
+                start_dt, end_dt = dt, dt + timedelta(days=1)
+            except: pass
+
+    filtered = []
     for e in events:
-        title=e["title"].lower()
-        loc=e.get("location","").lower()
-        if start_dt <= e["start"] <= end_dt:
-            if user_msg.lower() in title or user_msg.lower() in loc:
+        if not (start_dt <= e["start"] <= end_dt):
+            continue
+        if not keywords:
+            filtered.append(e)
+        else:
+            title_loc = (e["title"] + " " + e.get("location","")).lower()
+            if any(kw.strip().lower() in title_loc for kw in keywords.split(",")):
                 filtered.append(e)
-            elif keywords:
-                if any(kw.strip().lower() in title+loc for kw in keywords.split(",")):
-                    filtered.append(e)
     return filtered[:10]
 
-# ----------------------------- Chat -----------------------------
-with st.container():
-    for msg in st.session_state.chat_history:
-        avatar="🍓" if msg["role"]=="user" else "🐻"
-        with st.chat_message(msg["role"], avatar=avatar):
-            st.markdown(msg["parts"])
+@st.cache_data(show_spinner=False, persist=True)
+def get_filtered_events(user_msg, time_frame, vibe, personality_type, keywords, all_events):
+    return filter_events(all_events, user_msg, time_frame, vibe, personality_type, keywords)
 
-if user_prompt := st.chat_input("Message your bot…"):
-    st.session_state.chat_history.append({"role":"user","parts":user_prompt})
-    with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
-
-    # --- Filter events ---
-    filtered_events = filter_events(
-        st.session_state.asu_events, user_prompt, time_frame, vibe, personality_type, keywords
+# ----------------------------- Generate Bot Reply -----------------------------
+def generate_bot_reply(user_prompt):
+    f = st.session_state.filters
+    filtered_events = get_filtered_events(
+        user_msg=user_prompt,
+        time_frame=f["time_frame"],
+        vibe=f["vibe"],
+        personality_type=f["personality_type"],
+        keywords=f["keywords"],
+        all_events=st.session_state.asu_events
     )
 
     if filtered_events:
         events_summary = "\n".join([
-            f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+            f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}"
             for e in filtered_events
         ])
         bot_reply = f"Here are some ASU events that match your preferences:\n\n{events_summary}"
     else:
         bot_reply = "No matching events found based on your preferences."
 
-    # Optional: Gemini adds friendly commentary
+    # Optional: Gemini friendly commentary
     try:
         response = st.session_state.chat.send_message(f"Make this reply more friendly:\n{bot_reply}")
         if hasattr(response, "result") and response.result:
@@ -209,8 +244,26 @@ if user_prompt := st.chat_input("Message your bot…"):
                 if gemini_text.strip():
                     bot_reply = gemini_text
     except Exception:
-        pass  # fallback to filtered events text
+        pass
 
-    st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
-    with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+    return bot_reply
 
+# ----------------------------- Chat -----------------------------
+user_prompt = st.chat_input("Message your bot…")
+if user_prompt:
+    st.session_state.last_user_prompt = user_prompt
+    st.session_state.chat_history.append({"role":"user","parts":user_prompt})
+    with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
+
+# Always regenerate bot reply if there is a last user prompt
+if st.session_state.last_user_prompt:
+    bot_reply = generate_bot_reply(st.session_state.last_user_prompt)
+    if not st.session_state.chat_history or st.session_state.chat_history[-1]["role"] != "assistant":
+        st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
+
+# Display chat
+with st.container():
+    for msg in st.session_state.chat_history:
+        avatar = "🍓" if msg["role"] == "user" else "🐻"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["parts"])
