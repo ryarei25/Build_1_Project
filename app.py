@@ -142,10 +142,10 @@ select, option {
 
 /* --- Selectboxes & dropdowns --- */
 .stSelectbox>label {
-    color: #000 !important;  /* make "Choose a model" label black */
+    color: #333 !important;  /* make "Choose a model" label black */
 }
 
-.stSelectbox>div>div>div[role="listbox"],
+.stSelectbox>div>div>div[role="selectbox"],
 select, option {
     background-color: #D9FEC9 !important;  /* light green vibe dropdown */
     border: 2px solid #D8C5DD;
