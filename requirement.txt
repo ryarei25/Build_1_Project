@@ -1,5 +1,0 @@
-streamlit
-requests
-pillow
-google-genai
-dateparser
