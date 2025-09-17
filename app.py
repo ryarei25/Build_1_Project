@@ -29,31 +29,40 @@ try:
     st.image(header_img, use_container_width=True)
 except FileNotFoundError:
     st.warning("Header image not found. Place 'header_image.png' in the app folder.")
+
 # ------ CSS
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
-
-/* --- Background & general body --- */
-body {
-    font-family: 'Comfortaa', cursive;
-    background-color: #2E2E2E; /* dark grey */
-    color: #FFF;
-    overflow-x: hidden;
+/* --- Background --- */
+.stApp {
+    background-color: #2E2E2E !important;  /* dark grey */
 }
 
-/* --- Sidebar --- */
-[data-testid="stSidebar"] {
-    background-color: #E5DBFF !important; /* lavender */
-    color: #333;
-    border-right: 2px solid #D8C5DD;
+/* --- Bearfruit Title --- */
+.pixel-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 64px;
+    color: #FFCDEB;  /* light pink fill */
+    text-align: center;
+    text-shadow: 
+        -2px -2px 0 #000,  
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000; /* black outline */
+    margin-bottom: 20px;
 }
 
-/* --- Sidebar selectboxes (vibe box, model selection) --- */
+/* --- "Choose your model" label --- */
+label[for*="model"] {
+    color: black !important;
+    font-weight: bold;
+}
+
+/* --- Sidebar selectboxes (vibe, model, etc.) --- */
 [data-testid="stSidebar"] .stSelectbox>div>div>div[role="combobox"] {
     background-color: #D9FEC9 !important; /* light green */
     color: #333 !important;
-    border: 2px solid #E5DBFF !important;
+    border: 2px solid #E5DBFF !important; /* lavender border */
     border-radius: 6px !important;
 }
 
@@ -63,117 +72,15 @@ body {
     color: #333 !important;
 }
 
-/* Ensure labels are readable */
+/* --- Ensure label text is visible --- */
 label[for*="vibe"], label[for*="model"] {
     color: black !important;
     font-weight: bold;
 }
 
-/* --- Top bar (menu) --- */
-header {
-    background-color: #FFCDEB !important; /* pink */
-}
-
-/* --- Pixelated Bearfruit Title --- */
-.pixel-title-container {
-    position: relative;
-    text-align: center;
-    margin-bottom: 10px;
-}
-.pixel-title {
-    font-family: 'Press Start 2P', cursive;
-    font-size: 72px;
-    color: #FFF; /* inside color for readability */
-    text-shadow:
-        -2px -2px 0 #000,
-        2px -2px 0 #000,
-        -2px 2px 0 #000,
-        2px 2px 0 #000,  /* black outline */
-        4px 4px #EBC7FB,
-        6px 6px #FFE4A4,
-        8px 8px #D9FEC9;
-    display: inline-block;
-    z-index: 2;
-}
-
-/* --- Pixel stars --- */
-.star {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    background-color: #FFE4A4;
-    animation: twinkle 2s infinite;
-}
-@keyframes twinkle {
-    0%,100% {opacity:0.2;}
-    50% {opacity:1;}
-}
-
-/* --- Subtitle --- */
-.subtitle {
-    text-align:center;
-    font-family:'Comfortaa', cursive;
-    font-size:18px;
-    margin-bottom: 20px;
-    color: #FFF;
-}
-
-/* --- Chat bubbles --- */
-.chat-bubble {
-    max-width: 70%;
-    padding: 12px 16px;
-    margin: 8px 0;
-    border-radius: 4px;
-    font-family: 'Comfortaa', cursive;
-    font-size: 14px;
-    border: 2px solid;
-    box-shadow: 2px 2px 0 #D8C5DD;
-}
-
-.user-bubble {
-    background-color: #D9FEC9;
-    border-color: #CCE7FF;
-    align-self: flex-end;
-    color: #333;
-}
-
-.bot-bubble {
-    background-color: #FFCDEB;
-    border-color: #EBC7FB;
-    align-self: flex-start;
-    color: #333;
-}
-
-/* --- Chat container --- */
-.chat-container {
-    display: flex;
-    flex-direction: column;
-}
-
-/* --- Inputs & text areas --- */
-.stTextInput>div>div>input,
-.stTextArea>div>div>textarea {
-    background-color: #D9FEC9 !important;
-    border: 2px solid #E5DBFF;
-    border-radius: 6px;
-    color: #333;
-    font-family: 'Comfortaa', cursive;
-    padding: 6px;
-}
-
-/* --- Buttons --- */
-.stButton>button {
-    background-color: #FFE4A4 !important;
-    color: #333 !important;
-    border: 2px solid #EBC7FB !important;
-    border-radius: 4px !important;
-    font-size: 14px;
-    padding: 10px 16px;
-    transition: all 0.2s ease-in-out;
-}
-.stButton>button:hover {
-    background-color: #FFCDEB !important;
-    transform: scale(1.05);
+/* --- Top bar --- */
+header[data-testid="stHeader"] {
+    background-color: #FFCDEB !important; /* light pink */
 }
 </style>
 """, unsafe_allow_html=True)
