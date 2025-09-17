@@ -50,15 +50,18 @@ body {
     border-right: 2px solid #D8C5DD;
 }
 
-/* Sidebar input & select boxes */
-[data-testid="stSidebar"] .stSelectbox>div>div>div[role="listbox"],
-[data-testid="stSidebar"] .stTextInput>div>div>input,
-[data-testid="stSidebar"] .stTextArea>div>div>textarea {
+/* --- Sidebar selectboxes (including closed box) --- */
+[data-testid="stSidebar"] .stSelectbox>div>div>div:first-child {
     background-color: #D9FEC9 !important;
     color: #333 !important;
-    border: 2px solid #D8C5DD;
-    border-radius: 6px;
+    border: 2px solid #D8C5DD !important;
+    border-radius: 6px !important;
 }
+[data-testid="stSidebar"] .stSelectbox>div>div>div[role="listbox"] {
+    background-color: #D9FEC9 !important;
+    color: #333 !important;
+}
+
 
 /* --- Top bar --- */
 header {
