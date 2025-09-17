@@ -1,3 +1,29 @@
+# BearFruit
+# Copyright (c) 2025 Arya Reiland
+
+# ----------------------------- Imports -----------------------------
+import io
+import time
+import json
+from pathlib import Path
+from datetime import datetime
+
+import requests
+import streamlit as st
+from PIL import Image
+
+# --- Google GenAI Models import ---------------------------
+from google import genai
+from google.genai import types
+
+# ----------------------------- Page config ------------------------
+st.set_page_config(
+    page_title="Bearfruit",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
+# ----------------------------- CSS & Theme ------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@400;700&display=swap');
@@ -12,14 +38,14 @@ body {
 
 /* --- Sidebar --- */
 [data-testid="stSidebar"] {
-    background-color: #D8C5DD !important;
+    background-color: #E5DBFF !important; /* updated lavender */
     color: #333;
     border-right: 2px solid #C6D7E6;
 }
 
 /* --- Top bar (menu) --- */
 header {
-    background-color: #FFCDEB !important;
+    background-color: #FFCDEB !important; /* pink */
 }
 
 /* --- Pixelated Bearfruit Title --- */
@@ -113,3 +139,185 @@ header {
 }
 </style>
 """, unsafe_allow_html=True)
+
+
+# ----------------------------- Helpers -----------------------------
+def load_developer_prompt() -> str:
+    try:
+        with open("identity.txt", encoding="utf-8-sig") as f:
+            return f.read()
+    except FileNotFoundError:
+        st.warning("⚠️ 'identity.txt' not found. Using default prompt.")
+        return (
+            "You are a helpful assistant. "
+            "Be friendly, engaging, and provide clear, concise responses."
+        )
+
+def human_size(n: int) -> str:
+    for unit in ["B", "KB", "MB", "GB"]:
+        if n < 1024.0:
+            return f"{n:.1f} {unit}"
+        n /= 1024.0
+    return f"{n:.1f} TB"
+
+# ----------------------------- Gemini config --------------------------
+try:
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    system_instructions = load_developer_prompt()
+    search_tool = types.Tool(google_search=types.GoogleSearch())
+    generation_cfg = types.GenerateContentConfig(
+        system_instruction=system_instructions,
+        tools=[search_tool],
+        thinking_config=types.ThinkingConfig(thinking_budget=-1),
+        temperature=1.0,
+        max_output_tokens=2048,
+    )
+except Exception as e:
+    st.error(
+        "Error initialising the Gemini client. "
+        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets. "
+        f"Details: {e}"
+    )
+    st.stop()
+
+# ----------------------------- App state -----------------------------
+st.session_state.setdefault("chat_history", [])
+st.session_state.setdefault("uploaded_files", [])
+st.session_state.setdefault("user_personality", None)
+st.session_state.setdefault("quiz_stage", "none")
+st.session_state.setdefault("quiz_progress", 0)
+
+# ----------------------------- Sidebar -----------------------------
+with st.sidebar:
+    st.title("⚙️ Controls")
+    st.markdown("### About: Briefly describe your bot here for users.")
+    # Model selection
+    with st.expander(":material/text_fields_alt: Model Selection", expanded=True):
+        selected_model = st.selectbox(
+            "Choose a model:",
+            options=[
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+            ],
+            index=2,
+        )
+        st.caption(f"Selected: **{selected_model}**")
+        if "chat" not in st.session_state:
+            st.session_state.chat = client.chats.create(
+                model=selected_model, config=generation_cfg
+            )
+        elif getattr(st.session_state.chat, "model", None) != selected_model:
+            st.session_state.chat = client.chats.create(
+                model=selected_model, config=generation_cfg
+            )
+
+    if st.button("🧹 Clear chat", use_container_width=True):
+        st.session_state.chat_history.clear()
+        st.session_state.chat = client.chats.create(
+            model=selected_model, config=generation_cfg
+        )
+        st.toast("Chat cleared.")
+        st.rerun()
+
+# ----------------------------- ASU Event fetch/filter ------------------------
+ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
+
+def parse_ics(ics_text: str):
+    events = []
+    current_event = {}
+    for line in ics_text.splitlines():
+        if line.startswith("BEGIN:VEVENT"):
+            current_event = {}
+        elif line.startswith("END:VEVENT"):
+            if "SUMMARY" in current_event and "DTSTART" in current_event:
+                events.append(
+                    {
+                        "title": current_event.get("SUMMARY", "No title"),
+                        "start": current_event.get("DTSTART"),
+                        "end": current_event.get("DTEND"),
+                        "location": current_event.get("LOCATION", "No location specified"),
+                    }
+                )
+        elif line.startswith("SUMMARY:"):
+            current_event["SUMMARY"] = line[len("SUMMARY:") :].strip()
+        elif line.startswith("DTSTART"):
+            dt_str = line.split(":", 1)[1].strip()
+            try:
+                current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+            except Exception:
+                current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
+        elif line.startswith("DTEND"):
+            dt_str = line.split(":", 1)[1].strip()
+            try:
+                current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+            except Exception:
+                current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%d")
+        elif line.startswith("LOCATION:"):
+            current_event["LOCATION"] = line[len("LOCATION:") :].strip()
+    return events
+
+def fetch_asu_events():
+    try:
+        r = requests.get(ICS_URL)
+        r.raise_for_status()
+        return parse_ics(r.text)
+    except Exception as ex:
+        st.error(f"Failed to fetch ASU events: {ex}")
+        return []
+
+if "asu_events" not in st.session_state:
+    st.session_state.asu_events = fetch_asu_events()
+
+# ----------------------------- Personality JSON -----------------------------
+JSON_PATH = Path(__file__).with_name("16personalities.json")
+personalities: list = []
+try:
+    if JSON_PATH.exists():
+        personalities = json.loads(JSON_PATH.read_text(encoding="utf-8-sig"))
+        st.success(f"Loaded {len(personalities)} personality entries!")
+    else:
+        st.warning("⚠️ '16personalities.json' not found; continuing without personality data.")
+except json.JSONDecodeError as e:
+    st.error(f"Invalid JSON in {JSON_PATH.name}: {e}. Continuing without personality data.")
+except Exception as e:
+    st.error(f"Unexpected error loading {JSON_PATH.name}: {e}. Continuing without personality data.")
+
+# ----------------------------- Optional Filters -----------------------------
+st.markdown("### 🎯 Optional Filters for Event Recommendations")
+
+st.info(
+    "You don't have to fill these fields. "
+    "You can leave them blank and tell the bot about your vibe, personality, or interests organically in the chat."
+)
+
+time_frame = st.text_input(
+    "Enter a date or time frame (optional, e.g., 'next Friday', 'Sept 20')"
+)
+
+vibe = st.selectbox(
+    "Select your vibe/mood (optional)",
+    options=["Any", "Chill", "Energetic", "Creative", "Social", "Learning"]
+)
+
+personality_type = st.text_input(
+    "Enter your 16-personality type (optional, e.g., INFP, ESTJ)"
+)
+
+keywords = st.text_input(
+    "Enter keywords for your interests (optional, comma-separated, e.g., music, coding, hiking)"
+)
+
+# ----------------------------- Chat replay container -------------------------
+with st.container():
+    for msg in st.session_state.chat_history:
+        avatar = "👤" if msg["role"] == "user" else ":material/robot_2:"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["parts"])
+
+# ----------------------------- Chat input / send -----------------------------
+if user_prompt := st.chat_input("Message your bot…"):
+    st.session_state.chat_history.append({"role": "user", "parts": user_prompt})
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_prompt)
+
