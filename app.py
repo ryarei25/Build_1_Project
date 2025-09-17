@@ -156,7 +156,9 @@ select, option {
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------- Title ------------------------
+# --- Title 
+
+st.markdown("""
 
 <div class="pixel-title-container">
     <h1 class="pixel-title">Bearfruit</h1>
