@@ -2,18 +2,14 @@
 # Copyright (c) 2025 Arya Reiland
 
 # ----------------------------- Imports -----------------------------
-import io
-import time
-import json
+import io, time, json
 from pathlib import Path
 from datetime import datetime, timedelta
-
 import requests
 import streamlit as st
 from PIL import Image
 from dateutil.parser import parse as parse_date
 
-# --- Google GenAI Models import ---------------------------
 from google import genai
 from google.genai import types
 
@@ -26,14 +22,16 @@ st.set_page_config(
 )
 
 # --- Header Image ---
-header_img = Image.open("Bot.png")
-st.image(header_img, use_container_width=True, output_format="PNG")
+try:
+    header_img = Image.open("Bot.png")
+    st.image(header_img, use_container_width=True, output_format="PNG")
+except FileNotFoundError:
+    st.warning("Bot.png not found. Header image disabled.")
 
 # --- CSS & Theme ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
-
 body { font-family: 'Comfortaa', cursive; background: linear-gradient(135deg, #FFB6C1, #A0E7E5); color: #333; overflow-x: hidden; }
 [data-testid="stSidebar"] { background-color: #FFF0F5 !important; color: #333; border-right: 2px solid #FFD6E8; }
 h1.title { text-align: center; font-family: 'Comfortaa', cursive; font-size: 48px; }
@@ -88,11 +86,7 @@ try:
         max_output_tokens=2048,
     )
 except Exception as e:
-    st.error(
-        "Error initialising the Gemini client. "
-        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets. "
-        f"Details: {e}"
-    )
+    st.error(f"Error initialising Gemini client: {e}")
     st.stop()
 
 # ----------------------------- App state -----------------------------
@@ -110,7 +104,7 @@ with st.sidebar:
     )
     if "chat" not in st.session_state or getattr(st.session_state.chat, "model", None) != selected_model:
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
-    
+
     if st.button("🧹 Clear chat", use_container_width=True):
         st.session_state.chat_history.clear()
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
@@ -201,8 +195,10 @@ if user_prompt := st.chat_input("Message your bot…"):
         st.session_state.asu_events, user_prompt, time_frame, vibe, personality_type, keywords
     )
 
-    events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
-                                for e in filtered_events]) or "No matching events found."
+    events_summary = "\n".join([
+        f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+        for e in filtered_events
+    ]) or "No matching events found."
 
     user_prompt_with_context = f"""
 User message: {user_prompt}
@@ -218,10 +214,18 @@ Instructions:
 
     try:
         response = st.session_state.chat.send_message(user_prompt_with_context)
-        bot_reply = response.output_text  # updated Gemini API
+
+        # --- Gemini API output fix ---
+        bot_reply = ""
+        if hasattr(response, "result") and response.result:
+            content_blocks = getattr(response.result[0], "content", [])
+            if content_blocks:
+                bot_reply = "".join(getattr(block, "text", "") for block in content_blocks)
+        if not bot_reply:
+            bot_reply = "⚠️ Gemini API returned no text."
+
     except Exception as e:
         bot_reply = f"⚠️ Error with Gemini chat: {e}"
 
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
-
