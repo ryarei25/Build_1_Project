@@ -1,17 +1,18 @@
 # BearFruit
 # Copyright (c) 2025 Arya Reiland
 
-import io, json, time
-from pathlib import Path
-from datetime import datetime, timedelta
-
+# ----------------------------- Imports -----------------------------
+import io
+import json
 import requests
 import streamlit as st
 from PIL import Image
+from datetime import datetime, timedelta
+from dateutil.parser import parse as parse_date
 from google import genai
 from google.genai import types
 
-# ---------------- Page config ----------------
+# ----------------------------- Page config ------------------------
 st.set_page_config(
     page_title="BearFruit",
     page_icon="🐻",
@@ -19,81 +20,82 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------------- Header ----------------
-try:
-    header_img = Image.open("Bot.png")
-    st.image(header_img, use_container_width=True, output_format="PNG")
-except:
-    st.warning("Header image not found.")
+# --- Header Image ---
+header_img = Image.open("Bot.png")
+st.image(header_img, use_container_width=True, output_format="PNG")
 
-st.markdown("<h1 style='text-align:center'>BearFruit: Your ASU Event Finder</h1>", unsafe_allow_html=True)
-st.caption("Chat with your assistant below…")
+# --- CSS & Theme ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
 
-# ---------------- Helpers ----------------
+body { font-family: 'Comfortaa', cursive; background: linear-gradient(135deg, #FFB6C1, #A0E7E5); color: #333; overflow-x: hidden; }
+[data-testid="stSidebar"] { background-color: #FFF0F5 !important; color: #333; border-right: 2px solid #FFD6E8; }
+h1.title { text-align: center; font-family: 'Comfortaa', cursive; font-size: 48px; }
+.subtitle { text-align:center; font-family:'Comfortaa', cursive; font-size:18px; margin-bottom: 20px; color: #FFF; }
+.chat-bubble { max-width: 70%; padding: 12px 16px; margin: 8px 0; border-radius: 20px; font-family: 'Comfortaa', cursive; font-size: 14px; border: 2px solid; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+.user-bubble { background-color: #FFFAF0; border-color: #FFB6C1; align-self: flex-end; }
+.bot-bubble { background-color: #E0F7FA; border-color: #A0E7E5; align-self: flex-start; }
+.chat-container { display: flex; flex-direction: column; }
+.stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div[role="listbox"], select, option { background-color: #FFFAF0 !important; border: 2px solid #FFB6C1; border-radius: 12px; color: #333; font-family: 'Comfortaa', cursive; padding: 8px; }
+.stSelectbox>label { color: #FFF !important; }
+.stButton>button { background-color: #FFFA87 !important; color: #333 !important; border: 2px solid #FFB6C1 !important; border-radius: 15px !important; font-size: 14px; padding: 12px 20px; transition: all 0.2s ease-in-out; }
+.stButton>button:hover { background-color: #A0E7E5 !important; transform: scale(1.05); }
+</style>
+""", unsafe_allow_html=True)
+
+# --- Title with multicolor symbols ---
+st.markdown("""
+<h1 class="title">
+  <span style="color:#FFE87F;">𖡼</span>
+  <span style="color:#ADD8E6;">𖤣</span>
+  <span style="color:#90EE90;">𖥧</span>
+  <span style="color:#FFE87F;">Bear</span><span style="color:#FF6B81;">Fruit</span>
+  <span style="color:#90EE90;">𖥧</span>
+  <span style="color:#ADD8E6;">𖤣</span>
+  <span style="color:#90EE90;">𖡼</span>
+</h1>
+<p class="subtitle">Your ASU Event Finder</p>
+""", unsafe_allow_html=True)
+
+# ----------------------------- Helpers -----------------------------
 def load_developer_prompt() -> str:
     try:
-        return Path("identity.txt").read_text(encoding="utf-8-sig")
+        with open("identity.txt", encoding="utf-8-sig") as f:
+            return f.read()
     except FileNotFoundError:
-        return "You are a helpful assistant. Be friendly, concise, and clear."
+        return "You are a helpful assistant. Be friendly, engaging, and provide clear, concise responses."
 
-def parse_ics(ics_text: str):
-    events, current = [], {}
-    for line in ics_text.splitlines():
-        if line.startswith("BEGIN:VEVENT"): current = {}
-        elif line.startswith("END:VEVENT") and "SUMMARY" in current and "DTSTART" in current:
-            events.append({
-                "title": current.get("SUMMARY", "No title"),
-                "start": current.get("DTSTART"),
-                "end": current.get("DTEND"),
-                "location": current.get("LOCATION", "No location specified")
-            })
-        elif line.startswith("SUMMARY:"): current["SUMMARY"] = line.split(":",1)[1]
-        elif line.startswith("DTSTART"):
-            dt = line.split(":",1)[1]
-            try: current["DTSTART"] = datetime.strptime(dt, "%Y%m%dT%H%M%S")
-            except: current["DTSTART"] = datetime.strptime(dt, "%Y%m%d")
-        elif line.startswith("DTEND"):
-            dt = line.split(":",1)[1]
-            try: current["DTEND"] = datetime.strptime(dt, "%Y%m%dT%H%M%S")
-            except: current["DTEND"] = datetime.strptime(dt, "%Y%m%d")
-        elif line.startswith("LOCATION:"): current["LOCATION"] = line.split(":",1)[1]
-    return events
-
-def fetch_asu_events():
-    ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
-    try:
-        r = requests.get(ICS_URL)
-        r.raise_for_status()
-        return parse_ics(r.text)
-    except:
-        st.error("Failed to fetch ASU events.")
-        return []
-
-# ---------------- Gemini client ----------------
-try:
+# ----------------------------- Gemini config --------------------------
+@st.cache_resource
+def init_gemini():
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     system_instructions = load_developer_prompt()
+    search_tool = types.Tool(google_search=types.GoogleSearch())
     generation_cfg = types.GenerateContentConfig(
         system_instruction=system_instructions,
-        tools=[types.Tool(google_search=types.GoogleSearch())],
+        tools=[search_tool],
         thinking_config=types.ThinkingConfig(thinking_budget=-1),
         temperature=1.0,
         max_output_tokens=2048,
     )
-except Exception as e:
-    st.error(f"Error initializing Gemini: {e}")
-    st.stop()
+    return client, generation_cfg
 
-# ---------------- App state ----------------
+client, generation_cfg = init_gemini()
+
+# ----------------------------- App state -----------------------------
 st.session_state.setdefault("chat_history", [])
-st.session_state.setdefault("quiz_stage", "none")
-st.session_state.setdefault("quiz_progress", 0)
-st.session_state.setdefault("asu_events", fetch_asu_events())
+st.session_state.setdefault("asu_events", [])
+st.session_state.setdefault("event_cache", {})  # cache filtered events
 
-# ---------------- Sidebar ----------------
+# ----------------------------- Sidebar -----------------------------
 with st.sidebar:
     st.title("⚙️ Controls")
-    selected_model = st.selectbox("Choose model", ["gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite"], index=2)
+    selected_model = st.selectbox(
+        "Choose a model:",
+        options=["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        index=2,
+    )
     if "chat" not in st.session_state or getattr(st.session_state.chat, "model", None) != selected_model:
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
     if st.button("🧹 Clear chat", use_container_width=True):
@@ -101,58 +103,107 @@ with st.sidebar:
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
         st.rerun()
 
-# ---------------- Event filters ----------------
-time_frame = st.text_input("Enter date/time frame (optional, e.g., 'next Friday')")
-vibe = st.selectbox("Your vibe (optional)", ["Any", "Chill", "Energetic", "Creative", "Social", "Learning"])
-personality_type = st.text_input("Personality type (optional, e.g., INFP, ESTJ)")
-keywords = st.text_input("Keywords (optional, comma-separated)")
+# ----------------------------- Optional Filters -----------------------------
+time_frame = st.text_input("Enter a date or time frame (optional, e.g., 'next Friday', 'Sept 20')")
+vibe = st.selectbox("Select your vibe/mood (optional)", options=["Any", "Chill", "Energetic", "Creative", "Social", "Learning"])
+personality_type = st.text_input("Enter your 16-personality type (optional, e.g., INFP, ESTJ)")
+keywords = st.text_input("Enter keywords for your interests (optional, comma-separated, e.g., music, coding, hiking)")
 
-def filter_events(events, prompt="", days_ahead=7):
+# ----------------------------- ASU Events Fetch -----------------------------
+ICS_URL = "https://sundevilcentral.eoss.asu.edu/ics?from_date=15+Sep+2025&to_date=31+Dec+2025&school=arizonau"
+
+@st.cache_data(ttl=3600)
+def fetch_asu_events():
+    try:
+        r = requests.get(ICS_URL)
+        r.raise_for_status()
+        events = []
+        current_event = {}
+        for line in r.text.splitlines():
+            if line.startswith("BEGIN:VEVENT"): current_event = {}
+            elif line.startswith("END:VEVENT"):
+                if "SUMMARY" in current_event and "DTSTART" in current_event:
+                    events.append({
+                        "title": current_event.get("SUMMARY","No title"),
+                        "start": current_event.get("DTSTART"),
+                        "end": current_event.get("DTEND"),
+                        "location": current_event.get("LOCATION","No location")
+                    })
+            elif line.startswith("SUMMARY:"): current_event["SUMMARY"] = line[len("SUMMARY:"):].strip()
+            elif line.startswith("DTSTART"):
+                dt_str = line.split(":",1)[1].strip()
+                try: current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+                except: current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
+            elif line.startswith("DTEND"):
+                dt_str = line.split(":",1)[1].strip()
+                try: current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+                except: current_event["DTEND"] = datetime.strptime(dt_str, "%Y%m%d")
+            elif line.startswith("LOCATION:"): current_event["LOCATION"] = line[len("LOCATION:"):].strip()
+        return events
+    except Exception as ex:
+        st.error(f"Failed to fetch ASU events: {ex}")
+        return []
+
+if not st.session_state.asu_events:
+    st.session_state.asu_events = fetch_asu_events()
+
+# ----------------------------- Event Filtering -----------------------------
+def filter_events(user_msg, time_frame, vibe, personality_type, keywords):
+    cache_key = f"{user_msg}|{time_frame}|{vibe}|{personality_type}|{keywords}"
+    if cache_key in st.session_state.event_cache:
+        return st.session_state.event_cache[cache_key]
+
     now = datetime.now()
-    end_date = now + timedelta(days=days_ahead)
+    start_dt, end_dt = now, now + timedelta(days=7)
+    if time_frame:
+        try:
+            dt = parse_date(time_frame, fuzzy=True)
+            start_dt, end_dt = dt, dt + timedelta(days=1)
+        except: pass
+
     filtered = []
-    for e in events:
-        if now <= e["start"] <= end_date and (
-            prompt.lower() in e["title"].lower() or prompt.lower() in e.get("location","").lower()
-        ):
+    for e in st.session_state.asu_events:
+        title = e["title"].lower()
+        loc = e["location"].lower()
+        if not (start_dt <= e["start"] <= end_dt): continue
+        if user_msg.lower() in title or user_msg.lower() in loc:
             filtered.append(e)
-    return filtered[:10]
+        elif keywords:
+            kw_matches = any(kw.strip().lower() in title+loc for kw in keywords.split(","))
+            if kw_matches: filtered.append(e)
+    st.session_state.event_cache[cache_key] = filtered[:10]
+    return st.session_state.event_cache[cache_key]
 
-# ---------------- Chat display ----------------
-for msg in st.session_state.chat_history:
-    avatar = "🍓" if msg["role"]=="user" else "🐻"
-    with st.chat_message(msg["role"], avatar=avatar):
-        st.markdown(msg["parts"])
+# ----------------------------- Chat replay -------------------------
+with st.container():
+    for msg in st.session_state.chat_history:
+        avatar = "🍓" if msg["role"]=="user" else "🐻"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["parts"])
 
-# ---------------- Chat input ----------------
+# ----------------------------- Chat input / send -----------------------------
 if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_prompt)
+    with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    # Prepare event summary for bot
-    filtered = filter_events(st.session_state.asu_events, prompt=user_prompt)
-    if filtered:
-        event_texts = [f"- {e['title']} ({e['start'].strftime('%b %d %I:%M %p')}) at {e['location']}" for e in filtered]
-        events_summary = "<br>".join(event_texts)
-    else:
-        events_summary = "No matching events in your timeframe."
+    filtered_events = filter_events(user_prompt, time_frame, vibe, personality_type, keywords)
+    events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" for e in filtered_events]) or "No matching events found."
 
-    # Build bot prompt
-    bot_prompt = f"""
+    user_prompt_with_context = f"""
 User message: {user_prompt}
-Vibe: {vibe}, Personality: {personality_type}, Keywords: {keywords}
-Upcoming events (next week): {events_summary}
-Please respond with friendly, concise suggestions and event recommendations.
+Personality: {personality_type or 'unknown'}
+Vibe: {vibe}
+Keywords: {keywords}
+Upcoming events (filtered):
+{events_summary}
 """
 
-    # Send to Gemini
     try:
-        contents = [types.Part(text=bot_prompt)]
-        response = st.session_state.chat.send_message(contents)
-        full_response = response.text if hasattr(response, "text") else str(response)
-        st.session_state.chat_history.append({"role":"assistant","parts":full_response})
-        with st.chat_message("assistant", avatar=":material/robot_2:"):
-            st.markdown(full_response)
+        response = st.session_state.chat.send_message(user_prompt_with_context)
+        bot_reply = response.last
     except Exception as e:
-        st.error(f"⚠️ Error with Gemini chat: {e}")
+        bot_reply = f"⚠️ Error with Gemini chat: {e}"
+
+    st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
+    with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
