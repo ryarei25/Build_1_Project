@@ -97,8 +97,6 @@ st.session_state.setdefault("filters", {
     "personality_type": "",
     "keywords": ""
 })
-st.session_state.setdefault("last_user_prompt", "")
-st.session_state.setdefault("last_key", "")
 
 # ----------------------------- Sidebar -----------------------------
 with st.sidebar:
@@ -209,7 +207,8 @@ def filter_events(events, time_frame):
             event_start = datetime.combine(event_start, datetime.min.time())
         if event_start.tzinfo:
             event_start = event_start.astimezone(None).replace(tzinfo=None)
-        if start_dt <= event_start <= end_dt:
+        # Compare only the date
+        if start_dt.date() <= event_start.date() <= end_dt.date():
             filtered.append(e)
     return filtered[:10]
 
@@ -218,7 +217,7 @@ def generate_bot_reply(user_prompt):
     f = st.session_state.filters
     filtered_events = filter_events(st.session_state.asu_events, f["time_frame"])
     if filtered_events:
-        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y')}" 
                                    for e in filtered_events])
     else:
         events_summary = "No matching events found based on your preferences."
@@ -239,5 +238,6 @@ if user_prompt := st.chat_input("Message your bot…"):
     bot_reply = generate_bot_reply(user_prompt)
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
 
 
