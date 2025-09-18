@@ -97,6 +97,8 @@ st.session_state.setdefault("filters", {
     "personality_type": "",
     "keywords": ""
 })
+st.session_state.setdefault("last_user_prompt", "")
+st.session_state.setdefault("last_key", "")
 
 # ----------------------------- Sidebar -----------------------------
 with st.sidebar:
@@ -118,7 +120,11 @@ with st.sidebar:
 # ----------------------------- Filters -----------------------------
 st.markdown("### 🎯 Optional Filters")
 time_frame = st.text_input("Enter a date/time frame (optional)", value=st.session_state.filters["time_frame"])
-vibe = st.selectbox("Select your vibe/mood", ["Any","Chill","Energetic","Creative","Social","Learning"], index=["Any","Chill","Energetic","Creative","Social","Learning"].index(st.session_state.filters.get("vibe","Any")))
+vibe = st.selectbox(
+    "Select your vibe/mood",
+    ["Any","Chill","Energetic","Creative","Social","Learning"],
+    index=["Any","Chill","Energetic","Creative","Social","Learning"].index(st.session_state.filters.get("vibe","Any"))
+)
 personality_type = st.text_input("Enter your 16-personality type (optional)", value=st.session_state.filters.get("personality_type",""))
 keywords = st.text_input("Enter keywords (comma-separated)", value=st.session_state.filters.get("keywords",""))
 
@@ -169,40 +175,35 @@ if not st.session_state.asu_events:
     st.session_state.asu_events = fetch_asu_events()
 
 # ----------------------------- Event Filtering -----------------------------
-def filter_events(events, filters):
-    tf = (filters.get("time_frame","") or "").strip().lower()
+def filter_events(events, time_frame):
     now = datetime.now()
+    start_dt, end_dt = now, now + timedelta(days=7)
 
-    # No time filter → return all upcoming events
-    if not tf or tf == "any":
-        start_dt = now
-        end_dt = now + timedelta(days=365)
-    else:
-        start_dt, end_dt = now, now + timedelta(days=7)
-        if tf == "today":
-            start_dt = now.replace(hour=0, minute=0, second=0)
-            end_dt = now.replace(hour=23, minute=59, second=59)
-        elif tf == "tomorrow":
-            t = now + timedelta(days=1)
-            start_dt = t.replace(hour=0, minute=0, second=0)
-            end_dt = t.replace(hour=23, minute=59, second=59)
-        elif tf == "next week":
-            start_dt = now + timedelta(days=(7 - now.weekday()))
-            end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
-        elif tf == "this month":
-            start_dt = now.replace(day=1, hour=0, minute=0, second=0)
-            if now.month == 12:
-                end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
-            else:
-                next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
-                end_dt = next_month - timedelta(seconds=1)
+    tf = (time_frame or "").strip().lower()
+    if tf == "today":
+        start_dt = now.replace(hour=0, minute=0, second=0)
+        end_dt = now.replace(hour=23, minute=59, second=59)
+    elif tf == "tomorrow":
+        t = now + timedelta(days=1)
+        start_dt = t.replace(hour=0, minute=0, second=0)
+        end_dt = t.replace(hour=23, minute=59, second=59)
+    elif tf == "next week":
+        start_dt = now + timedelta(days=(7 - now.weekday()))
+        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    elif tf == "this month":
+        start_dt = now.replace(day=1, hour=0, minute=0, second=0)
+        if now.month == 12:
+            end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
         else:
+            next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
+            end_dt = next_month - timedelta(seconds=1)
+    else:
+        if time_frame:
             try:
-                dt = parse_date(tf, fuzzy=True)
+                dt = parse_date(time_frame, fuzzy=True)
                 start_dt, end_dt = dt, dt + timedelta(days=1)
             except:
-                start_dt = now
-                end_dt = now + timedelta(days=7)
+                pass
 
     filtered = []
     for e in events:
@@ -213,20 +214,34 @@ def filter_events(events, filters):
             event_start = event_start.astimezone(None).replace(tzinfo=None)
         if start_dt <= event_start <= end_dt:
             filtered.append(e)
-
     return filtered[:10]
 
 # ----------------------------- Bot Reply -----------------------------
 def generate_bot_reply(user_prompt):
     f = st.session_state.filters
-    filtered_events = filter_events(st.session_state.asu_events, f)
-    if filtered_events:
-        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
-                                   for e in filtered_events])
-    else:
-        events_summary = "No matching events found based on your preferences."
+    prompt_lower = user_prompt.lower()
 
-    return f"Here are events matching your preferences:\n{events_summary}"
+    # Event-related queries
+    if any(word in prompt_lower for word in ["event", "asu", "calendar"]):
+        time_frame = f["time_frame"] or "next week"
+        filtered_events = filter_events(st.session_state.asu_events, time_frame)
+        if filtered_events:
+            events_summary = "\n".join([
+                f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+                for e in filtered_events
+            ])
+        else:
+            events_summary = "No matching events found based on your preferences."
+        return f"Here are events matching your preferences:\n{events_summary}"
+
+    # Personality/vibe queries
+    elif any(word in prompt_lower for word in ["personality", "vibe", "mood"]):
+        personality = f.get("personality_type") or "unknown"
+        vibe = f.get("vibe") or "Any"
+        return f"Your personality type is {personality}, and your selected vibe/mood is {vibe}."
+
+    # Default response
+    return "I'm here to help! You can ask me about ASU events or your preferences."
 
 # ----------------------------- Chat -----------------------------
 with st.container():
@@ -242,3 +257,4 @@ if user_prompt := st.chat_input("Message your bot…"):
     bot_reply = generate_bot_reply(user_prompt)
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
