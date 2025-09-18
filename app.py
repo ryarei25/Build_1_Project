@@ -81,7 +81,11 @@ try:
         max_output_tokens=2048,
     )
 except Exception as e:
-    st.error(f"Error initializing Gemini client: {e}")
+    st.error(
+        "Error initialising the Gemini client. "
+        "Check your `GEMINI_API_KEY` in Streamlit → Settings → Secrets. "
+        f"Details: {e}"
+    )
     st.stop()
 
 # ----------------------------- App state -----------------------------
@@ -104,6 +108,7 @@ with st.sidebar:
     )
     if "chat" not in st.session_state or getattr(st.session_state.chat, "model", None) != selected_model:
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
+
     if st.button("🧹 Clear chat", use_container_width=True):
         st.session_state.chat_history.clear()
         st.session_state.chat = client.chats.create(model=selected_model, config=generation_cfg)
@@ -164,36 +169,40 @@ if not st.session_state.asu_events:
     st.session_state.asu_events = fetch_asu_events()
 
 # ----------------------------- Event Filtering -----------------------------
-@st.cache_data(show_spinner=False)
 def filter_events(events, filters):
-    now = datetime.now()
-    start_dt, end_dt = now, now + timedelta(days=7)
-
     tf = (filters.get("time_frame","") or "").strip().lower()
-    if tf == "today":
-        start_dt = now.replace(hour=0, minute=0, second=0)
-        end_dt = now.replace(hour=23, minute=59, second=59)
-    elif tf == "tomorrow":
-        t = now + timedelta(days=1)
-        start_dt = t.replace(hour=0, minute=0, second=0)
-        end_dt = t.replace(hour=23, minute=59, second=59)
-    elif tf == "next week":
-        start_dt = now + timedelta(days=(7 - now.weekday()))
-        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
-    elif tf == "this month":
-        start_dt = now.replace(day=1, hour=0, minute=0, second=0)
-        if now.month == 12:
-            end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
-        else:
-            next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
-            end_dt = next_month - timedelta(seconds=1)
+    now = datetime.now()
+
+    # No time filter → return all upcoming events
+    if not tf or tf == "any":
+        start_dt = now
+        end_dt = now + timedelta(days=365)
     else:
-        if tf:
+        start_dt, end_dt = now, now + timedelta(days=7)
+        if tf == "today":
+            start_dt = now.replace(hour=0, minute=0, second=0)
+            end_dt = now.replace(hour=23, minute=59, second=59)
+        elif tf == "tomorrow":
+            t = now + timedelta(days=1)
+            start_dt = t.replace(hour=0, minute=0, second=0)
+            end_dt = t.replace(hour=23, minute=59, second=59)
+        elif tf == "next week":
+            start_dt = now + timedelta(days=(7 - now.weekday()))
+            end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        elif tf == "this month":
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0)
+            if now.month == 12:
+                end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
+            else:
+                next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
+                end_dt = next_month - timedelta(seconds=1)
+        else:
             try:
                 dt = parse_date(tf, fuzzy=True)
                 start_dt, end_dt = dt, dt + timedelta(days=1)
             except:
-                pass
+                start_dt = now
+                end_dt = now + timedelta(days=7)
 
     filtered = []
     for e in events:
@@ -204,18 +213,19 @@ def filter_events(events, filters):
             event_start = event_start.astimezone(None).replace(tzinfo=None)
         if start_dt <= event_start <= end_dt:
             filtered.append(e)
+
     return filtered[:10]
 
 # ----------------------------- Bot Reply -----------------------------
-def generate_bot_reply(filters):
-    filtered_events = filter_events(st.session_state.asu_events, filters)
+def generate_bot_reply(user_prompt):
+    f = st.session_state.filters
+    filtered_events = filter_events(st.session_state.asu_events, f)
     if filtered_events:
-        events_summary = "\n".join([
-            f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
-            for e in filtered_events
-        ])
+        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
+                                   for e in filtered_events])
     else:
         events_summary = "No matching events found based on your preferences."
+
     return f"Here are events matching your preferences:\n{events_summary}"
 
 # ----------------------------- Chat -----------------------------
@@ -229,7 +239,6 @@ if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    bot_reply = generate_bot_reply(st.session_state.filters)
+    bot_reply = generate_bot_reply(user_prompt)
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
-
