@@ -140,6 +140,7 @@ def fetch_asu_events():
         events = []
         current_event = {}
         for line in r.text.splitlines():
+            line = line.strip()
             if line.startswith("BEGIN:VEVENT"):
                 current_event = {}
             elif line.startswith("END:VEVENT"):
@@ -149,17 +150,22 @@ def fetch_asu_events():
                         "start": current_event.get("DTSTART"),
                         "location": current_event.get("LOCATION","No location")
                     })
-            elif line.startswith("SUMMARY:"): current_event["SUMMARY"]=line[len("SUMMARY:"):].strip()
+            elif line.startswith("SUMMARY:"):
+                current_event["SUMMARY"] = line[len("SUMMARY:"):].strip()
             elif line.startswith("DTSTART"):
                 dt_str = line.split(":",1)[1].strip()
                 try:
-                    if dt_str.endswith("Z"):
-                        current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%SZ")
+                    if "T" in dt_str:
+                        if dt_str.endswith("Z"):
+                            current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%SZ")
+                        else:
+                            current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
                     else:
-                        current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%dT%H%M%S")
+                        current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
                 except:
-                    current_event["DTSTART"] = datetime.strptime(dt_str, "%Y%m%d")
-            elif line.startswith("LOCATION:"): current_event["LOCATION"]=line[len("LOCATION:"):].strip()
+                    continue
+            elif line.startswith("LOCATION:"):
+                current_event["LOCATION"] = line[len("LOCATION:"):].strip()
         return events
     except Exception as ex:
         st.error(f"Failed to fetch ASU events: {ex}")
@@ -171,53 +177,48 @@ if not st.session_state.asu_events:
 # ----------------------------- Event Filtering -----------------------------
 def filter_events(events, time_frame):
     now = datetime.now()
-    start_dt, end_dt = now, now + timedelta(days=7)
-
     tf = (time_frame or "").strip().lower()
+
     if tf == "today":
-        start_dt = now.replace(hour=0, minute=0, second=0)
-        end_dt = now.replace(hour=23, minute=59, second=59)
+        start_dt = now.date()
+        end_dt = now.date()
     elif tf == "tomorrow":
         t = now + timedelta(days=1)
-        start_dt = t.replace(hour=0, minute=0, second=0)
-        end_dt = t.replace(hour=23, minute=59, second=59)
+        start_dt = t.date()
+        end_dt = t.date()
     elif tf == "next week":
-        start_dt = now + timedelta(days=(7 - now.weekday()))
-        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        start_dt = (now + timedelta(days=(7 - now.weekday()))).date()
+        end_dt = start_dt + timedelta(days=6)
     elif tf == "this month":
-        start_dt = now.replace(day=1, hour=0, minute=0, second=0)
+        start_dt = now.replace(day=1).date()
         if now.month == 12:
-            end_dt = now.replace(month=12, day=31, hour=23, minute=59, second=59)
+            end_dt = datetime(now.year, 12, 31).date()
         else:
-            next_month = now.replace(month=now.month+1, day=1, hour=0, minute=0, second=0)
-            end_dt = next_month - timedelta(seconds=1)
+            end_dt = (datetime(now.year, now.month+1, 1) - timedelta(days=1)).date()
     else:
-        if time_frame:
-            try:
-                dt = parse_date(time_frame, fuzzy=True)
-                start_dt, end_dt = dt, dt + timedelta(days=1)
-            except:
-                pass
+        try:
+            dt = parse_date(time_frame, fuzzy=True)
+            start_dt = dt.date()
+            end_dt = dt.date()
+        except:
+            start_dt = now.date()
+            end_dt = now.date() + timedelta(days=7)
 
     filtered = []
     for e in events:
         event_start = e["start"]
-        # Normalize all event times
         if not isinstance(event_start, datetime):
             event_start = datetime.combine(event_start, datetime.min.time())
-        if event_start.tzinfo:
-            event_start = event_start.astimezone(None).replace(tzinfo=None)
-        # Compare only the date
-        if start_dt.date() <= event_start.date() <= end_dt.date():
+        if start_dt <= event_start.date() <= end_dt:
             filtered.append(e)
     return filtered[:10]
 
 # ----------------------------- Bot Reply -----------------------------
-def generate_bot_reply(user_prompt):
+def generate_bot_reply():
     f = st.session_state.filters
     filtered_events = filter_events(st.session_state.asu_events, f["time_frame"])
     if filtered_events:
-        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y')}" 
+        events_summary = "\n".join([f"- {e['title']} at {e['location']} on {e['start'].strftime('%b %d %Y %H:%M')}" 
                                    for e in filtered_events])
     else:
         events_summary = "No matching events found based on your preferences."
@@ -235,9 +236,10 @@ if user_prompt := st.chat_input("Message your bot…"):
     st.session_state.chat_history.append({"role":"user","parts":user_prompt})
     with st.chat_message("user", avatar="👤"): st.markdown(user_prompt)
 
-    bot_reply = generate_bot_reply(user_prompt)
+    bot_reply = generate_bot_reply()
     st.session_state.chat_history.append({"role":"assistant","parts":bot_reply})
     with st.chat_message("assistant", avatar="🐻"): st.markdown(bot_reply)
+
 
 
 
